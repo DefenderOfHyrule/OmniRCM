@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OmniRCM Web</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" id="themeColorMeta" content="#006494" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="OmniRCM" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-primary: #006494;
+    --color-on-primary: #FFFFFF;
+    --color-surface: #F0F4F8;
+    --color-on-surface: #1A2530;
+    --color-surface-variant: #D8E4EE;
+    --color-on-surface-variant: #4A6278;
+    --dot-connected: #4CAF50;
+    --dot-disconnected: #607D8B;
+    --dot-patched-v1: #FFC107;
+    --dot-patched-v2: #F44336;
+    --dot-success: #4CAF50;
+    --dot-error: #F44336;
+  }
+  html[data-theme="dark"] {
+    --color-surface: #131A22;
+    --color-on-surface: #E1E3E5;
+    --color-surface-variant: #1E2A34;
+    --color-on-surface-variant: #8FA3B1;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 32px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 16px 8px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-surface-variant);
+    border-radius: 50px;
+    padding: 8px 14px;
+    flex: 1;
+    min-width: 0;
+    transition: background-color 0.2s ease;
+  }
+  .pill-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dot-disconnected);
+    flex-shrink: 0;
+    transition: background-color 0.25s ease;
+  }
+  .pill-dot.pulse { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+  .pill-status {
+    font-size: 13px; font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .header-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--color-surface-variant);
+    border: none; border-radius: 50px;
+    padding: 8px 12px;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    color: var(--color-on-surface);
+    color: var(--color-on-surface);
+    cursor: pointer; flex-shrink: 0;
+    transition: background-color 0.15s ease;
+  }
+  .header-btn:hover { filter: brightness(0.95); }
+  .header-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--color-surface-variant);
+    border: none; border-radius: 50px;
+    width: 36px; height: 36px;
+    color: var(--color-on-surface);
+    cursor: pointer; flex-shrink: 0;
+    transition: background-color 0.15s ease;
+  }
+  .icon-btn:hover { filter: brightness(0.95); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  main { padding: 0 16px; }
+  .section-label {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--color-on-surface-variant);
+    margin: 0 0 6px 2px; font-weight: 500;
+  }
+  .section-label-row {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-top: 16px;
+  }
+  .section-label-row .section-label { margin: 0; }
+
+  .payload-list { display: flex; flex-direction: column; }
+  .payload-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px 8px 4px;
+    border-radius: 10px; cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .payload-row:hover { background: rgba(0,0,0,0.04); }
+  html[data-theme="dark"] .payload-row:hover { background: rgba(255,255,255,0.04); }
+  .payload-radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--color-on-surface-variant);
+    flex-shrink: 0; position: relative;
+    transition: border-color 0.15s ease;
+  }
+  .payload-row.selected .payload-radio { border-color: var(--color-primary); }
+  .payload-row.selected .payload-radio::after {
+    content: ''; position: absolute; inset: 3px;
+    border-radius: 50%; background: var(--color-primary);
+  }
+  .payload-text { display: flex; flex-direction: column; min-width: 0; }
+  .payload-name {
+    font-size: 14px; font-weight: 500; color: var(--color-on-surface);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .payload-meta { font-size: 12px; color: var(--color-on-surface-variant); }
+  .payload-empty {
+    font-size: 13px; color: var(--color-on-surface-variant);
+    padding: 10px 4px; font-style: italic;
+  }
+
+  .selected-chip {
+    display: none; align-items: center;
+    background: var(--color-surface-variant);
+    border-radius: 8px; padding: 10px;
+    margin-top: 8px; margin-bottom: 2px;
+  }
+  .selected-chip.visible { display: flex; }
+  .selected-chip-name {
+    flex: 1; min-width: 0; font-size: 13px; font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .selected-chip-size {
+    font-size: 11px; color: var(--color-on-surface-variant);
+    margin-left: 8px; flex-shrink: 0;
+  }
+
+  button { font-family: inherit; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: opacity 0.15s, background-color 0.15s, filter 0.15s; }
+  button:disabled { opacity: 0.38; cursor: default; }
+  .btn-tonal {
+    flex: 1; padding: 10px 16px; border-radius: 999px;
+    background: var(--color-primary); color: var(--color-on-primary);
+    opacity: 0.85;
+  }
+  .btn-tonal:not(:disabled):hover { opacity: 1; }
+  .btn-outlined {
+    flex: 1; padding: 10px 16px; border-radius: 999px;
+    background: transparent; color: var(--color-on-surface);
+    border: 1px solid var(--color-on-surface-variant);
+  }
+  .btn-outlined:not(:disabled):hover { background: rgba(0,0,0,0.04); }
+  html[data-theme="dark"] .btn-outlined:not(:disabled):hover { background: rgba(255,255,255,0.05); }
+  .btn-filled {
+    width: 100%; padding: 12px 16px; border-radius: 999px;
+    background: var(--color-primary); color: var(--color-on-primary);
+    margin-top: 10px; font-size: 15px;
+  }
+  .btn-filled:not(:disabled):hover { filter: brightness(1.08); }
+  .btn-filled.busy { color: transparent; position: relative; }
+  .btn-filled.busy::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-text {
+    background: transparent; color: var(--color-primary);
+    padding: 4px 8px; border-radius: 8px; font-size: 13px;
+  }
+  html[data-theme="dark"] .btn-text { color: #7EC8F8; }
+  .btn-text:not(:disabled):hover { background: rgba(0,100,148,0.08); }
+
+  .result-panel {
+    display: none; flex-direction: column;
+    background: var(--color-surface-variant);
+    border-radius: 16px; padding: 16px;
+    margin-top: 16px;
+    border: 3px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .result-panel.visible { display: flex; }
+  .result-panel.success { border-color: #4CAF50; }
+  .result-panel.patched-v1 { border-color: #FFC107; }
+  .result-panel.patched-v2 { border-color: #F44336; }
+  .result-panel.error { border-color: #F44336; }
+  .result-title {
+    font-size: 17px; font-weight: 500;
+    color: var(--color-on-surface); margin: 0 0 8px;
+  }
+  .result-divider {
+    height: 1px; background: var(--color-on-surface-variant);
+    opacity: 0.2; margin-bottom: 10px;
+  }
+  .result-detail {
+    font-size: 13px; line-height: 1.6;
+    color: var(--color-on-surface-variant); margin: 0 0 12px;
+    white-space: pre-line;
+  }
+  .result-dismiss {
+    align-self: flex-end;
+    background: transparent; color: var(--color-primary);
+    padding: 6px 8px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  }
+  html[data-theme="dark"] .result-dismiss { color: #7EC8F8; }
+  .result-dismiss:hover { background: rgba(0,100,148,0.08); }
+
+  .log-section { display: none; }
+  .log-section.visible { display: block; }
+  .log-view {
+    background: var(--color-surface-variant);
+    border-radius: 8px; padding: 10px;
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11.5px; line-height: 1.6;
+    color: var(--color-on-surface);
+    min-height: 130px; max-height: 320px;
+    overflow-y: auto; white-space: pre-wrap;
+    word-break: break-word; user-select: text;
+    margin-top: 6px;
+  }
+  .log-view:empty::before {
+    content: 'Log output will appear here.';
+    color: var(--color-on-surface-variant); font-style: italic;
+  }
+  .log-line { display: block; }
+  .log-line.success { color: #2E7D32; }
+  html[data-theme="dark"] .log-line.success { color: #7CD992; }
+  .log-line.error { color: #C62828; }
+  html[data-theme="dark"] .log-line.error { color: #FF8A80; }
+  .log-line.warn { color: #E65100; }
+  html[data-theme="dark"] .log-line.warn { color: #FFD54F; }
+  .log-line.muted { color: var(--color-on-surface-variant); }
+
+  .sources-card {
+    background: var(--color-surface-variant);
+    border-radius: 16px; padding: 14px 16px;
+    margin-top: 20px;
+  }
+  .sources-title {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--color-on-surface-variant);
+    font-weight: 500; margin: 0 0 10px;
+  }
+  .source-link {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px; border-radius: 8px;
+    text-decoration: none; color: var(--color-on-surface);
+    transition: background-color 0.15s;
+  }
+  .source-link:hover { background: rgba(0,0,0,0.04); }
+  html[data-theme="dark"] .source-link:hover { background: rgba(255,255,255,0.04); }
+  .source-link + .source-link { border-top: 1px solid rgba(0,0,0,0.06); }
+  html[data-theme="dark"] .source-link + .source-link { border-top-color: rgba(255,255,255,0.06); }
+  .source-name { font-size: 14px; font-weight: 500; }
+  .source-desc { font-size: 12px; color: var(--color-on-surface-variant); margin-top: 1px; }
+  .source-arrow { color: var(--color-on-surface-variant); flex-shrink: 0; margin-left: 8px; }
+  .spin-icon { animation: spin 0.9s linear infinite; }
+  .source-version { font-size: 11px; font-weight: 400; color: var(--color-on-surface-variant); margin-left: 4px; }
+  .source-link { cursor: pointer; }
+
+  .info-card {
+    background: transparent;
+    border: 1px solid var(--color-surface-variant);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-top: 12px;
+  }
+  .info-card h3 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-on-surface-variant);
+    font-weight: 600;
+  }
+  .info-card p, .info-card li {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--color-on-surface);
+    margin: 0 0 6px;
+  }
+  .info-card ul { margin: 0; padding-left: 18px; }
+  .info-card a { color: var(--color-on-surface-variant); }
+  .info-card code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 3px;
+    padding: 1px 4px;
+  }
+  html[data-theme="dark"] .info-card code { background: rgba(255,255,255,0.08); }
+
+  .compat-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 3px 9px; border-radius: 999px;
+    background: var(--color-surface-variant);
+    color: var(--color-on-surface-variant); margin-bottom: 10px;
+  }
+  .compat-badge.ok { color: #2E7D32; }
+  html[data-theme="dark"] .compat-badge.ok { color: #7CD992; }
+  .compat-badge.warn { color: #E65100; }
+  html[data-theme="dark"] .compat-badge.warn { color: #FFD54F; }
+
+  footer {
+    text-align: center; font-size: 11px;
+    color: var(--color-on-surface-variant);
+    margin-top: 24px; padding: 0 16px; line-height: 1.6;
+  }
+  footer a { color: var(--color-on-surface-variant); }
+
+  input[type="file"] { display: none; }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  @media (max-width: 420px) { .pill-status { font-size: 12px; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header-row">
+    <div class="pill" id="pill">
+      <div class="pill-dot" id="pillDot"></div>
+      <div class="pill-status" id="pillStatus">Waiting for RCM device…</div>
+    </div>
+    <button class="header-btn" id="btnLogToggle" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Log
+    </button>
+    <button class="icon-btn" id="btnThemeToggle" aria-label="Toggle theme">
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+
+  <main>
+    <div class="section-label" style="margin-top:8px;">Device</div>
+    <button class="btn-outlined" id="btnConnectDevice" style="width:100%;">Connect device…</button>
+    <div class="selected-chip" id="selectedDeviceCard">
+      <div class="selected-chip-name" id="selectedDeviceName"></div>
+      <div class="selected-chip-size" id="selectedDeviceIds"></div>
+    </div>
+
+    <div class="section-label" style="margin-top:18px;">Payloads</div>
+    <div class="payload-list" id="payloadList">
+      <div class="payload-empty">No payload loaded yet, add a .bin file below.</div>
+    </div>
+    <div class="selected-chip" id="selectedPayloadCard">
+      <div class="selected-chip-name" id="selectedPayloadName"></div>
+      <div class="selected-chip-size" id="selectedPayloadSize"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-outlined" id="btnAddCustom" style="flex:1;">Add payload…</button>
+    </div>
+    <input type="file" id="fileInput" accept=".bin,application/octet-stream" />
+
+    <button class="btn-filled" id="btnInject" disabled>Inject</button>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-divider"></div>
+      <div class="result-detail" id="resultDetail"></div>
+      <button class="result-dismiss" id="btnResultDismiss">Dismiss</button>
+    </div>
+
+    <div class="log-section" id="logSection">
+      <div class="section-label-row" style="margin-top:16px;">
+        <div class="section-label">Log</div>
+        <button class="btn-text" id="btnClearLog">Clear</button>
+      </div>
+      <div class="log-view" id="logView"></div>
+    </div>
+
+    <div class="sources-card">
+      <div class="sources-title">Download payloads</div>
+      <div class="source-link" id="dlfusee">
+        <div>
+          <div class="source-name">fusee.bin <span class="source-version" id="vfusee"></span></div>
+          <div class="source-desc">Atmosphere-NX/Atmosphere</div>
+        </div>
+        <svg class="source-arrow" id="arrowfusee" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <svg class="source-arrow spin-icon" id="spinfusee" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <div class="source-link" id="dlhekate">
+        <div>
+          <div class="source-name">hekate_ctcaer_*.bin <span class="source-version" id="vhekate"></span></div>
+          <div class="source-desc">CTCaer/hekate</div>
+        </div>
+        <svg class="source-arrow" id="arrowhekate" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <svg class="source-arrow spin-icon" id="spinhekate" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <div class="source-link" id="dlTegraExplorer">
+        <div>
+          <div class="source-name">TegraExplorer.bin <span class="source-version" id="vTegraExplorer"></span></div>
+          <div class="source-desc">suchmememanyskill/TegraExplorer</div>
+        </div>
+        <svg class="source-arrow" id="arrowTegraExplorer" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <svg class="source-arrow spin-icon" id="spinTegraExplorer" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Browser compatibility</h3>
+      <p id="compatBadgeHost"></p>
+      <p>WebUSB requires a Chromium-based browser (Chrome, Edge, Opera, Brave) on macOS, Linux, ChromeOS, or Android, served over HTTP(S) or from <code>localhost</code>. It is not supported in Firefox or Safari.</p>
+      <p>Windows is explicitly <strong>NOT supported</strong>, despite having the ability to run Chromium-based browsers.
+      <p>On Linux, unprivileged USB access to the device typically requires a udev rule for vendor <code>0955</code> / product <code>7321</code>. To set up this udev rule, please refer to <a href="https://switch.hacks.guide/extras/adding_udev.html">this page</a>.</p>
+    </div>
+
+    <div class="info-card">
+      <h3>How results are classified</h3>
+      <p>This page mirrors OmniRCM's libusb-based injector as closely as the WebUSB API allows. WebUSB doesn't expose raw URB status codes the way native libusb/libusbK does, so results are inferred from documented <code>USBTransferStatus</code> values and transfer outcomes:</p>
+      <ul>
+        <li><strong>Unpatched (success):</strong> the stack-smash control transfer throws/disconnects, the console rebooted into the payload.</li>
+        <li><strong>Patched V1:</strong> writes time out at offset <code>0xF000</code> (the intermezzo boundary), or the smash request resolves with <code>status: "ok"</code> and 0 bytes, the bootROM stopped responding rather than crashing. Additionally, the Device ID is used to identify the console model in situations where bad cables cause Erista consoles to "slip" to the Mariko timeout offset, still providing an accurate result.</li>
+        <li><strong>Patched V2 / Mariko:</strong> the Device ID is used to instantly identify Mariko consoles. Additionally, the payload write fails at exactly offset <code>0x10000</code> (Mariko's bootROM stops accepting data there), or the smash request never resolves at all.</li>
+      </ul>
+    </div>
+
+    <footer>
+      Payload injector using the WebUSB API, created and designed by <a href="https://github.com/DefenderOfHyrule">DefenderOfHyrule</a>.
+    </footer>
+    <footer>
+      <a class="btn source" href="https://github.com/DefenderOfHyrule/OmniRCM">View GitHub Source code</a>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const VENDOR_ID  = 0x0955;
+  const PRODUCT_ID = 0x7321;
+  const RCM_PAYLOAD_ADDRESS    = 0x40010000;
+  const INTERMEZZO_LOCATION    = 0x4001f000;
+  const PAYLOAD_LOAD_BLOCK     = 0x40020000;
+  const RCM_LENGTH             = 0x30298;
+  const PAYLOAD_START_OFFSET   = 0x2a8;
+  const PACKET_SIZE            = 0x1000;
+  const SMASH_LENGTH           = 0x7000;
+  const MARIKO_STOP_OFFSET     = 0x10000;
+  const PATCHED_V1_OFFSET      = 0xF000;
+  let   seenV1TimeoutAtF000    = false;
+  const MAX_TOTAL_LENGTH       = RCM_LENGTH;
+  const SMASH_SHORT_WAIT_MS    = 600;
+  const POLL_START_DELAY_MS    = 150;
+  const POLL_INTERVAL_MS       = 150;
+  const CLOSE_TIMEOUT_MS       = 2000;
+  const REOPEN_SETTLE_MS       = 200;
+  const REOPEN_PROBE_TIMEOUT_MS = 2000;
+  const WRITE_TIMEOUT_MS       = 3000;
+  const DEVICE_ID_LENGTH       = 16;
+  const INTERMEZZO = new Uint8Array([
+    0x44,0x00,0x9f,0xe5, 0x01,0x11,0xa0,0xe3, 0x40,0x20,0x9f,0xe5, 0x00,0x20,0x42,0xe0,
+    0x08,0x00,0x00,0xeb, 0x01,0x01,0xa0,0xe3, 0x10,0xff,0x2f,0xe1, 0x00,0x00,0xa0,0xe1,
+    0x2c,0x00,0x9f,0xe5, 0x2c,0x10,0x9f,0xe5, 0x02,0x28,0xa0,0xe3, 0x01,0x00,0x00,0xeb,
+    0x20,0x00,0x9f,0xe5, 0x10,0xff,0x2f,0xe1, 0x04,0x30,0x90,0xe4, 0x04,0x30,0x81,0xe4,
+    0x04,0x20,0x52,0xe2, 0xfb,0xff,0xff,0x1a, 0x1e,0xff,0x2f,0xe1, 0x20,0xf0,0x01,0x40,
+    0x5c,0xf0,0x01,0x40, 0x00,0x00,0x02,0x40, 0x00,0x00,0x01,0x40,
+  ]);
+  function buildRcmPayload(userPayload) {
+    const addrRepeatCount   = (INTERMEZZO_LOCATION - RCM_PAYLOAD_ADDRESS) / 4;
+    const intermezzoOffset  = PAYLOAD_START_OFFSET + addrRepeatCount * 4;
+    const payloadLoadOffset = PAYLOAD_START_OFFSET + (PAYLOAD_LOAD_BLOCK - RCM_PAYLOAD_ADDRESS);
+    const maxPayloadBytes   = MAX_TOTAL_LENGTH - payloadLoadOffset;
+    if (userPayload.byteLength < 1) throw new Error('Payload is empty.');
+    if (userPayload.byteLength > maxPayloadBytes) throw new Error(`Payload too large: ${userPayload.byteLength.toLocaleString()} bytes (max ${maxPayloadBytes.toLocaleString()})`);
+    const unpaddedLength = payloadLoadOffset + userPayload.byteLength;
+    const bufLength = Math.max(MAX_TOTAL_LENGTH, Math.ceil(unpaddedLength / PACKET_SIZE) * PACKET_SIZE);
+    const buf = new Uint8Array(bufLength);
+    const view = new DataView(buf.buffer);
+    view.setUint32(0x0, RCM_LENGTH, true);
+    for (let i = 0; i < addrRepeatCount; i++) view.setUint32(PAYLOAD_START_OFFSET + i * 4, INTERMEZZO_LOCATION, true);
+    buf.set(INTERMEZZO, intermezzoOffset);
+    buf.set(userPayload, payloadLoadOffset);
+    return { buffer: buf, unpaddedLength };
+  }
+  function isWebUSBSupported() { return typeof navigator !== 'undefined' && !!navigator.usb; }
+  function hex(dataView) { let out = ''; for (let i = 0; i < dataView.byteLength; i++) out += dataView.getUint8(i).toString(16).padStart(2, '0'); return out.toUpperCase(); }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+  function withTimeout(promise, ms) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => { if (!settled) { settled = true; resolve({ timedOut: true }); } }, ms);
+      promise.then(
+        (result) => { if (!settled) { settled = true; clearTimeout(timer); resolve({ timedOut: false, result }); } },
+        (err) => { if (!settled) { settled = true; clearTimeout(timer); resolve({ timedOut: false, err }); } }
+      );
+    });
+  }
+  async function sendPayload(device, buf, unpaddedLength, log) {
+    let bytesSent = 0, lowBuffer = true, lastPct = -1;
+    while (bytesSent < unpaddedLength || lowBuffer) {
+      const chunk = buf.slice(bytesSent, bytesSent + PACKET_SIZE);
+      const outcome = await withTimeout(device.transferOut(1, chunk), WRITE_TIMEOUT_MS);
+      if (outcome.timedOut) return { failed: true, timedOut: true, offset: bytesSent, reason: `transferOut did not respond within ${WRITE_TIMEOUT_MS}ms` };
+      if (outcome.err) return { failed: true, timedOut: false, offset: bytesSent, reason: `transferOut threw: ${outcome.err.message || outcome.err}` };
+      if (!outcome.result || outcome.result.status !== 'ok') return { failed: true, timedOut: false, offset: bytesSent, reason: `status="${outcome.result ? outcome.result.status : 'none'}"` };
+      if (bytesSent === PATCHED_V1_OFFSET) seenV1TimeoutAtF000 = false;
+      lowBuffer = !lowBuffer;
+      bytesSent += PACKET_SIZE;
+      const pct = Math.min(100, Math.round((bytesSent / unpaddedLength) * 100));
+      if (pct !== lastPct && (bytesSent / PACKET_SIZE) % 16 === 0) { log(`  Sending… ${pct}%`, 'muted'); lastPct = pct; }
+    }
+    return { failed: false };
+  }
+  function isSameDevice(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    return a.vendorId === b.vendorId && a.productId === b.productId && a.serialNumber === b.serialNumber;
+  }
+  async function smashStack(device, log) {
+    let disconnected = false;
+    const disconnectPromise = new Promise((resolve) => {
+      const onDisconnect = (event) => {
+        if (isSameDevice(event.device, device)) {
+          disconnected = true;
+          if (isWebUSBSupported()) navigator.usb.removeEventListener('disconnect', onDisconnect);
+          resolve({ kind: 'disconnected' });
+        }
+      };
+      if (isWebUSBSupported()) navigator.usb.addEventListener('disconnect', onDisconnect);
+    });
+    const attempt = device.controlTransferIn(
+      { requestType: 'standard', recipient: 'interface', request: 0x00, value: 0x00, index: 0x00 },
+      SMASH_LENGTH
+    ).then((result) => ({ kind: 'resolved', result })).catch((err) => ({ kind: 'rejected', err }));
+    let stopPolling = false;
+    const pollPromise = (async () => {
+      await sleep(POLL_START_DELAY_MS);
+      while (!stopPolling) {
+        try {
+          const paired = await navigator.usb.getDevices();
+          if (!paired.some((d) => isSameDevice(d, device))) return { kind: 'polled-gone' };
+        } catch (_e) {}
+        if (stopPolling) break;
+        await sleep(POLL_INTERVAL_MS);
+      }
+      return { kind: 'poll-stopped' };
+    })();
+    const shortTimeout = new Promise((resolve) => setTimeout(() => resolve({ kind: 'timeout' }), SMASH_SHORT_WAIT_MS));
+    const outcome = await Promise.race([attempt, disconnectPromise, pollPromise, shortTimeout]);
+    stopPolling = true;
+    if (outcome.kind === 'disconnected') { log("  Smash: 'disconnect' event fired for this device, exploit triggered successfully", 'muted'); return 'Success'; }
+    if (outcome.kind === 'polled-gone') { log('  Smash: device dropped out of getDevices(), exploit triggered successfully', 'muted'); return 'Success'; }
+    if (outcome.kind === 'rejected') { log(`  Smash: transfer errored (${outcome.err && (outcome.err.name || outcome.err.message)}), consistent with the device disconnecting`, 'muted'); return 'Success'; }
+    if (outcome.kind === 'resolved') {
+      const { status, data } = outcome.result;
+      log(`  Smash: status="${status}"${data ? `, ${data.byteLength} bytes returned` : ''}`, 'muted');
+      if (status === 'stall') return 'PatchedV1';
+      if (status === 'ok') return 'PatchedV1';
+      if (status === 'babble') return 'Error';
+      return 'Error';
+    }
+    log(`  Smash: no response within ${SMASH_SHORT_WAIT_MS / 1000}s, closing session to release the pending request...`, 'muted');
+    await withTimeout(device.close().catch(() => {}), CLOSE_TIMEOUT_MS);
+    await sleep(REOPEN_SETTLE_MS);
+    try {
+      const paired = await navigator.usb.getDevices();
+      if (!paired.some((d) => isSameDevice(d, device))) { log('  Smash: device no longer appears in getDevices() after closing, exploit triggered successfully', 'muted'); return 'Success'; }
+    } catch (_e) {}
+    const reopenOutcome = await withTimeout((async () => {
+      await device.open();
+      if (device.configuration === null || device.configuration === undefined) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      return device.transferIn(1, DEVICE_ID_LENGTH);
+    })(), REOPEN_PROBE_TIMEOUT_MS);
+    if (reopenOutcome.timedOut) { log('  Smash: reopening the device did not complete in time, treating as a successful trigger', 'muted'); return 'Success'; }
+    if (reopenOutcome.err) { log(`  Smash: could not reopen the device (${reopenOutcome.err.message || reopenOutcome.err}), treating as a successful trigger`, 'muted'); return 'Success'; }
+    const probeBytes = reopenOutcome.result && reopenOutcome.result.data ? reopenOutcome.result.data.byteLength : 0;
+    log(`  Smash: device reopened and responded normally (${probeBytes} bytes), it did not crash`, 'muted');
+    return 'PatchedV2';
+  }
+  async function injectPayload(device, payloadBytes, payloadName, log) {
+    log(`Injecting ${payloadName}...`);
+    let built;
+    try { built = buildRcmPayload(payloadBytes); }
+    catch (err) { log(`✗ ${err.message}`, 'error'); return { status: 'Error', message: err.message }; }
+    try { await device.open(); }
+    catch (err) { const msg = 'Could not open USB device. Permission granted?'; log(`✗ ${msg} (${err.message || err})`, 'error'); return { status: 'Error', message: msg }; }
+    try {
+      if (device.configuration === null || device.configuration === undefined) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      log('Reading device ID...');
+      let idHex = '(unknown)';
+      try {
+        const idOutcome = await withTimeout(device.transferIn(1, DEVICE_ID_LENGTH), WRITE_TIMEOUT_MS);
+        if (idOutcome.timedOut) { const msg = `Failed to read device ID: no response within ${WRITE_TIMEOUT_MS}ms. Try a different USB cable/port.`; log(`✗ ${msg}`, 'error'); return { status: 'Error', message: msg }; }
+        if (idOutcome.err) throw idOutcome.err;
+        const idResult = idOutcome.result;
+        if (!idResult.data || idResult.data.byteLength !== DEVICE_ID_LENGTH) { const msg = 'Failed to read device ID. Try a different USB cable/port.'; log(`✗ ${msg}`, 'error'); return { status: 'Error', message: msg }; }
+        idHex = hex(idResult.data);
+      } catch (err) { const msg = 'Failed to read device ID. Try a different USB cable/port.'; log(`✗ ${msg} (${err.message || err})`, 'error'); return { status: 'Error', message: msg }; }
+      log(`Device ID: ${idHex}`);
+
+      if (idHex.endsWith('2101D0')) {
+        log('\nThis device ID identifies as a Mariko (T214) console.');
+        log('✗ Console is not exploitable via RCM (V2/Mariko console).', 'error');
+        return { status: 'PatchedV2', deviceId: idHex };
+      }
+
+      log(`Loaded: ${payloadName} (${payloadBytes.byteLength.toLocaleString()} bytes)`);
+      const blocks = Math.ceil(built.unpaddedLength / PACKET_SIZE);
+      log(`Buffer built: ${(blocks * PACKET_SIZE).toLocaleString()} bytes in ${blocks} blocks`);
+      log('Opening RCM device...');
+      log(`Sending payload (${blocks} blocks)...`);
+      const sendResult = await sendPayload(device, built.buffer, built.unpaddedLength, log);
+      if (sendResult.failed) {
+        const { offset, timedOut, reason } = sendResult;
+        log(`  Write failed at offset ${offset.toLocaleString()}: ${reason}`, 'muted');
+        if (timedOut) {
+          if (offset === PATCHED_V1_OFFSET) { seenV1TimeoutAtF000 = true; log('✗ Console is patched (V1 patched console), this console is not exploitable via RCM.', 'error'); return { status: 'PatchedV1', deviceId: idHex }; }
+          if (offset === MARIKO_STOP_OFFSET) {
+            if (seenV1TimeoutAtF000) { log('✗ Console is patched (V1 patched console), this console is not exploitable via RCM.', 'error'); return { status: 'PatchedV1', deviceId: idHex }; }
+            if (idHex.endsWith('01101062')) { log('✗ Console is patched (V1 patched console), this console is not exploitable via RCM.', 'error'); return { status: 'PatchedV1', deviceId: idHex }; }
+            log('✗ Console is not exploitable via RCM (V2/Mariko console).', 'error'); return { status: 'PatchedV2', deviceId: idHex };
+          }
+        }
+        const msg = `Transfer failed at offset ${offset.toLocaleString()} (${reason}).`;
+        log(`✗ ${msg}`, 'error'); return { status: 'Error', message: msg };
+      }
+      log('Payload sent.');
+      log(`Smashing the stack (grace period: ${SMASH_SHORT_WAIT_MS / 1000}s)...`);
+      const smash = await smashStack(device, log);
+      if (smash === 'Success') { log(`✓ Injection successful, device ID: ${idHex}`, 'success'); return { status: 'Success', deviceId: idHex }; }
+      if (smash === 'PatchedV1') { log('✗ Console is patched (V1 patched console), this console is not exploitable via RCM.', 'error'); return { status: 'PatchedV1', deviceId: idHex }; }
+      if (smash === 'PatchedV2') { log('✗ Console is not exploitable via RCM (V2/Mariko console).', 'error'); return { status: 'PatchedV2', deviceId: idHex }; }
+      const msg = 'Stack smash failed with an unexpected error.'; log(`✗ ${msg}`, 'error'); return { status: 'Error', message: msg };
+    } finally { try { await device.close(); } catch (_e) {} }
+  }
+
+  const RESULT_COPY = {
+    Success:   { title: '✓ Injection successful',          cls: 'success',    detail: 'The payload was sent successfully. The Switch should now be booted into the selected payload. You may disconnect the USB cable and continue to follow the guide.' },
+    PatchedV1: { title: '✗ Patched V1 console',           cls: 'patched-v1', detail: 'This console has an updated bootROM and cannot be exploited via RCM.' },
+    PatchedV2: { title: '✗ V2/Mariko console',            cls: 'patched-v2', detail: 'This is a Mariko (V2) console. The fusee-gelee exploit does not apply to this hardware revision.' },
+    Error:     { title: '✗ Injection failed',             cls: 'error',      detail: 'An error occurred during injection. Check the log for details. Make sure the device was freshly put in RCM and the cable is properly connected.' },
+  };
+
+  const el = {
+    pillDot:            document.getElementById('pillDot'),
+    pillStatus:         document.getElementById('pillStatus'),
+    btnConnectDevice:   document.getElementById('btnConnectDevice'),
+    selectedDeviceCard: document.getElementById('selectedDeviceCard'),
+    selectedDeviceName: document.getElementById('selectedDeviceName'),
+    selectedDeviceIds:  document.getElementById('selectedDeviceIds'),
+    payloadList:        document.getElementById('payloadList'),
+    selectedCard:       document.getElementById('selectedPayloadCard'),
+    selectedName:       document.getElementById('selectedPayloadName'),
+    selectedSize:       document.getElementById('selectedPayloadSize'),
+    btnAddCustom:       document.getElementById('btnAddCustom'),
+    fileInput:          document.getElementById('fileInput'),
+    btnInject:          document.getElementById('btnInject'),
+    btnClearLog:        document.getElementById('btnClearLog'),
+    logView:            document.getElementById('logView'),
+    logSection:         document.getElementById('logSection'),
+    btnLogToggle:       document.getElementById('btnLogToggle'),
+    resultPanel:        document.getElementById('resultPanel'),
+    resultTitle:        document.getElementById('resultTitle'),
+    resultDetail:       document.getElementById('resultDetail'),
+    btnResultDismiss:   document.getElementById('btnResultDismiss'),
+    compatBadgeHost:    document.getElementById('compatBadgeHost'),
+    btnThemeToggle:     document.getElementById('btnThemeToggle'),
+    iconSun:            document.getElementById('iconSun'),
+    iconMoon:           document.getElementById('iconMoon'),
+  };
+
+  const state = {
+    payloads: [], selectedPayloadId: null,
+    currentDevice: null, deviceConnected: false,
+    injecting: false,
+    logVisible: false, darkMode: false,
+  };
+
+  function fmtBytes(n) { return `${n.toLocaleString()} bytes`; }
+
+  function appendLog(message, type) {
+    const line = document.createElement('span');
+    line.className = 'log-line' + (type ? ' ' + type : '');
+    line.textContent = message;
+    el.logView.appendChild(line);
+    el.logView.scrollTop = el.logView.scrollHeight;
+  }
+  function clearLog() { el.logView.textContent = ''; }
+
+  function setPill(color, text, pulsing) {
+    el.pillDot.style.background = color;
+    el.pillDot.classList.toggle('pulse', !!pulsing);
+    el.pillStatus.textContent = text;
+  }
+
+  function showResultPanel(status) {
+    const copy = RESULT_COPY[status];
+    if (!copy) { el.resultPanel.className = 'result-panel'; return; }
+    el.resultTitle.textContent = copy.title;
+    el.resultDetail.textContent = copy.detail;
+    el.resultPanel.className = `result-panel visible ${copy.cls}`;
+    el.resultPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function hideResultPanel() {
+    el.resultPanel.className = 'result-panel';
+  }
+
+  function refreshPillFromState(resultStatus) {
+    if (resultStatus === 'Success')   return setPill('var(--dot-success)',    'Injection successful');
+    if (resultStatus === 'PatchedV1') return setPill('var(--dot-patched-v1)', 'Patched V1 console');
+    if (resultStatus === 'PatchedV2') return setPill('var(--dot-patched-v2)', 'V2/Mariko console');
+    if (resultStatus === 'Error')     return setPill('var(--dot-error)',       'Injection failed');
+    if (state.deviceConnected)        return setPill('var(--dot-connected)',   'RCM device connected');
+    return setPill('var(--dot-disconnected)', 'Waiting for RCM device…');
+  }
+
+  function updateInjectButton() {
+    const canInject = !!state.selectedPayloadId && state.deviceConnected && !state.injecting;
+    el.btnInject.disabled = !canInject || !isWebUSBSupported();
+  }
+
+  function renderPayloadList() {
+    el.payloadList.innerHTML = '';
+    if (state.payloads.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'payload-empty';
+      empty.textContent = 'No payload loaded yet, add a .bin file below.';
+      el.payloadList.appendChild(empty);
+      return;
+    }
+    for (const payload of state.payloads) {
+      const row = document.createElement('div');
+      row.className = 'payload-row' + (payload.id === state.selectedPayloadId ? ' selected' : '');
+      row.dataset.id = payload.id;
+      const radio = document.createElement('div');
+      radio.className = 'payload-radio';
+      const text = document.createElement('div');
+      text.className = 'payload-text';
+      const name = document.createElement('div');
+      name.className = 'payload-name';
+      name.textContent = payload.name;
+      const meta = document.createElement('div');
+      meta.className = 'payload-meta';
+      meta.textContent = payload.version ? `${fmtBytes(payload.size)} · v${payload.version}` : fmtBytes(payload.size);
+      text.appendChild(name);
+      text.appendChild(meta);
+      row.appendChild(radio);
+      row.appendChild(text);
+      row.addEventListener('click', () => selectPayload(payload.id));
+      el.payloadList.appendChild(row);
+    }
+  }
+
+  function selectPayload(id) {
+    state.selectedPayloadId = id;
+    renderPayloadList();
+    const payload = state.payloads.find((p) => p.id === id);
+    if (payload) {
+      el.selectedCard.classList.add('visible');
+      el.selectedName.textContent = payload.name;
+      el.selectedSize.textContent = fmtBytes(payload.size);
+    }
+    updateInjectButton();
+  }
+
+  function addPayload(payload) {
+    const idx = state.payloads.findIndex((p) => p.id === payload.id);
+    if (idx >= 0) state.payloads[idx] = payload;
+    else state.payloads.push(payload);
+    renderPayloadList();
+  }
+
+  el.btnResultDismiss.addEventListener('click', () => {
+    hideResultPanel();
+    refreshPillFromState(null);
+  });
+
+  el.btnLogToggle.addEventListener('click', () => {
+    state.logVisible = !state.logVisible;
+    el.logSection.classList.toggle('visible', state.logVisible);
+    el.btnLogToggle.setAttribute('aria-pressed', String(state.logVisible));
+    if (state.logVisible) el.logView.scrollTop = el.logView.scrollHeight;
+  });
+
+  el.btnAddCustom.addEventListener('click', () => el.fileInput.click());
+  el.fileInput.addEventListener('change', async () => {
+    const file = el.fileInput.files && el.fileInput.files[0];
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const id = `custom:${file.name}`;
+    addPayload({ id, name: file.name, size: bytes.byteLength, getBytes: async () => bytes });
+    selectPayload(id);
+    appendLog(`Added payload: ${file.name}`, 'muted');
+    el.fileInput.value = '';
+  });
+
+  el.btnClearLog.addEventListener('click', clearLog);
+
+  el.btnConnectDevice.addEventListener('click', async () => {
+    if (!isWebUSBSupported()) { appendLog('✗ WebUSB is not supported in this browser. Use Chrome, Edge, or Opera.', 'error'); return; }
+    try {
+      appendLog('Requesting USB device access...', 'muted');
+      const device = await navigator.usb.requestDevice({ filters: [] });
+      applyManualDevice(device);
+    } catch (err) {
+      if (err && err.name === 'NotFoundError') {
+        appendLog("No device was selected. If the picker was empty, Brave's Shields may be blocking USB. Try lowering Shields for this site.", 'warn');
+      } else {
+        appendLog(`[ERROR] ${err.message || err}`, 'error');
+      }
+    }
+  });
+
+  function applyManualDevice(device) {
+    state.currentDevice = device;
+    state.deviceConnected = true;
+    const vidHex = device.vendorId.toString(16).padStart(4, '0').toUpperCase();
+    const pidHex = device.productId.toString(16).padStart(4, '0').toUpperCase();
+    const label = device.productName || device.manufacturerName || 'USB device';
+    el.selectedDeviceCard.classList.add('visible');
+    el.selectedDeviceName.textContent = label;
+    el.selectedDeviceIds.textContent = `VID:${vidHex} PID:${pidHex}`;
+    if (isRcmDevice(device)) {
+      appendLog(`Selected device: ${label} (${vidHex}:${pidHex}), matches Tegra RCM (0955:7321).`, 'success');
+      refreshPillFromState(null);
+    } else {
+      appendLog(`Selected device: ${label} (${vidHex}:${pidHex}), does not match the expected Tegra RCM ID (0955:7321). Injection will likely fail.`, 'warn');
+      setPill('var(--dot-patched-v1)', `Custom device selected (${vidHex}:${pidHex})`);
+    }
+    updateInjectButton();
+  }
+
+  async function runInjection(device) {
+    if (state.injecting) return;
+    const payload = state.payloads.find((p) => p.id === state.selectedPayloadId);
+    if (!payload) return;
+    state.injecting = true;
+    el.btnInject.classList.add('busy');
+    hideResultPanel();
+    updateInjectButton();
+    try {
+      const bytes = await payload.getBytes();
+      const result = await injectPayload(device, bytes, payload.name, appendLog);
+      state.currentDevice = device;
+      refreshPillFromState(result.status);
+      showResultPanel(result.status);
+    } catch (err) {
+      appendLog(`[ERROR] ${err.message || err}`, 'error');
+      refreshPillFromState('Error');
+      showResultPanel('Error');
+    } finally {
+      state.injecting = false;
+      el.btnInject.classList.remove('busy');
+      updateInjectButton();
+    }
+  }
+
+  el.btnInject.addEventListener('click', async () => {
+    if (!isWebUSBSupported()) { appendLog('✗ WebUSB is not supported in this browser. Use Chrome, Edge, or Opera.', 'error'); return; }
+    try {
+      let device = state.currentDevice;
+      if (!device) {
+        appendLog('Requesting access to USB device...', 'muted');
+        device = await navigator.usb.requestDevice({ filters: [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }] });
+      }
+      await runInjection(device);
+    } catch (err) {
+      if (err && err.name === 'NotFoundError') appendLog('No device selected.', 'muted');
+      else appendLog(`[ERROR] ${err.message || err}`, 'error');
+    }
+  });
+
+  function isRcmDevice(device) { return device.vendorId === VENDOR_ID && device.productId === PRODUCT_ID; }
+
+  async function refreshDeviceState() {
+    if (!isWebUSBSupported()) return;
+    try {
+      const devices = await navigator.usb.getDevices();
+      const rcm = devices.find(isRcmDevice);
+      state.deviceConnected = !!rcm;
+      if (rcm) state.currentDevice = rcm;
+      refreshPillFromState(null);
+      updateInjectButton();
+    } catch (_e) {}
+  }
+
+  if (isWebUSBSupported()) {
+    navigator.usb.addEventListener('connect', async (event) => {
+      if (!isRcmDevice(event.device)) return;
+      state.deviceConnected = true;
+      state.currentDevice = event.device;
+      refreshPillFromState(null);
+      updateInjectButton();
+      appendLog('RCM device connected.', 'muted');
+    });
+    navigator.usb.addEventListener('disconnect', (event) => {
+      if (!isRcmDevice(event.device)) return;
+      state.deviceConnected = false;
+      state.currentDevice = null;
+      hideResultPanel();
+      refreshPillFromState(null);
+      updateInjectButton();
+      appendLog('RCM device disconnected.', 'muted');
+    });
+  }
+
+  function initCompatBadge() {
+    if (isWebUSBSupported()) {
+      el.compatBadgeHost.innerHTML = '<span class="compat-badge ok">● WebUSB available in this browser</span>';
+    } else {
+      el.compatBadgeHost.innerHTML = '<span class="compat-badge warn">● WebUSB is not available in this browser</span>';
+      el.btnInject.disabled = true;
+    }
+  }
+
+  function applyTheme(dark) {
+    state.darkMode = dark;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    el.iconSun.style.display = dark ? 'block' : 'none';
+    el.iconMoon.style.display = dark ? 'none' : 'block';
+    document.getElementById('themeColorMeta').setAttribute('content', dark ? '#131A22' : '#F0F4F8');
+    try { localStorage.setItem('omnircm_dark_mode', String(dark)); } catch (_e) {}
+  }
+
+  el.btnThemeToggle.addEventListener('click', () => applyTheme(!state.darkMode));
+
+  const savedTheme = (() => { try { return localStorage.getItem('omnircm_dark_mode'); } catch (_e) { return null; } })();
+  const prefersDark = savedTheme !== null ? savedTheme === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(prefersDark);
+
+  initCompatBadge();
+  refreshPillFromState(null);
+  refreshDeviceState();
+  updateInjectButton();
+})();
+</script>
+<script>
+(function () {
+  const DOWNLOAD_SPECS = [
+    {
+      id: 'fusee',
+      repo: 'Atmosphere-NX/Atmosphere',
+      buildUrl: (tag) => `https://github.com/Atmosphere-NX/Atmosphere/releases/download/${tag}/fusee.bin`,
+      buildFilename: () => 'fusee.bin',
+    },
+    {
+      id: 'hekate',
+      repo: 'CTCaer/hekate',
+      buildUrl: (tag) => {
+        const v = tag.replace(/^v/i, '');
+        return `https://github.com/CTCaer/hekate/releases/download/${tag}/hekate_ctcaer_${v}.bin`;
+      },
+      buildFilename: (tag) => { const v = tag.replace(/^v/i, ''); return `hekate_ctcaer_${v}.bin`; },
+    },
+    {
+      id: 'TegraExplorer',
+      repo: 'suchmememanyskill/TegraExplorer',
+      buildUrl: (tag) => `https://github.com/suchmememanyskill/TegraExplorer/releases/download/${tag}/TegraExplorer.bin`,
+      buildFilename: () => 'TegraExplorer.bin',
+    },
+  ];
+
+  const resolvedTags = {};
+
+  function withV(tag) {
+    return /^v/i.test(tag) ? tag : `v${tag}`;
+  }
+
+  function setLoading(id, loading) {
+    document.getElementById(`arrow${id}`).style.display = loading ? 'none' : 'block';
+    document.getElementById(`spin${id}`).style.display = loading ? 'block' : 'none';
+  }
+
+  DOWNLOAD_SPECS.forEach((spec) => {
+    const rowEl = document.getElementById(`dl${spec.id}`);
+    const vEl = document.getElementById(`v${spec.id}`);
+
+    setLoading(spec.id, true);
+    fetch(`https://api.github.com/repos/${spec.repo}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    })
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => {
+        resolvedTags[spec.id] = data.tag_name;
+        vEl.textContent = withV(data.tag_name);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(spec.id, false));
+
+    rowEl.addEventListener('click', () => {
+      const tag = resolvedTags[spec.id];
+      if (!tag) { alert('Still loading version info, please try again.'); return; }
+      window.location.href = spec.buildUrl(tag);
+    });
+  });
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
+</body>
+</html>

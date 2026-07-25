@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <key>platform-application</key>
+    <true/>
+
+    <key>com.apple.private.security.container-required</key>
+    <true/>
+
+    <key>com.apple.security.exception.iokit-user-client-class</key>
+    <array>
+        <string>AppleUSBHostDeviceUserClient</string>
+        <string>AppleUSBHostInterfaceUserClient</string>
+    </array>
+    <key>com.apple.system.diagnostics.iokit-properties</key>
+    <true/>
+</dict>
+</plist>

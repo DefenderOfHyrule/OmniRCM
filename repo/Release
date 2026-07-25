@@ -1,0 +1,7 @@
+Origin: OmniRCM
+Label: OmniRCM
+Suite: stable
+Codename: ios
+Architectures: iphoneos-arm64
+Components: main
+Description: OmniRCM repo

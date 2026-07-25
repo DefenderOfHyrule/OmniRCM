@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniRCM.AddPayloadSourceDialog"
+        Title="Add payload source"
+        Width="420"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource CardBg}">
+
+    <Border Padding="20" BorderThickness="0">
+        <StackPanel Spacing="12">
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Add payload source"
+                           FontSize="15" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Fetch a custom payload from a GitHub repository's latest release."
+                           FontSize="12"
+                           Foreground="{DynamicResource TextMuted}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Display name" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <TextBox x:Name="NameBox"
+                         Watermark="e.g. my-custom-payload"
+                         FontSize="13" Padding="10,8"
+                         Background="{DynamicResource CardInner}"
+                         BorderBrush="{DynamicResource CardInnerBorder}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         CornerRadius="6"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="GitHub repository" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <TextBox x:Name="RepoBox"
+                         Watermark="owner/repo"
+                         FontSize="13" Padding="10,8"
+                         Background="{DynamicResource CardInner}"
+                         BorderBrush="{DynamicResource CardInnerBorder}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         CornerRadius="6"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Release asset filename" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <TextBox x:Name="AssetMatchBox"
+                         Watermark="e.g. hekate_ctcaer_*_Nyx_*.zip"
+                         FontSize="13" Padding="10,8"
+                         Background="{DynamicResource CardInner}"
+                         BorderBrush="{DynamicResource CardInnerBorder}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         CornerRadius="6"/>
+                <TextBlock Text="Use * as a wildcard for version numbers, or just type part of the filename."
+                           FontSize="10"
+                           Foreground="{DynamicResource TextMuted}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <CheckBox x:Name="IsZipCheck"
+                      Content="Asset is a .zip archive"
+                      FontSize="12"
+                      Foreground="{DynamicResource TextPrimary}"/>
+
+            <StackPanel x:Name="ZipPatternPanel" Spacing="4" IsVisible="False">
+                <TextBlock Text="File to extract from the archive" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                <TextBox x:Name="ZipPatternBox"
+                         Watermark="hekate_ctcaer_*.bin"
+                         Text="*.bin"
+                         FontSize="13" Padding="10,8"
+                         Background="{DynamicResource CardInner}"
+                         BorderBrush="{DynamicResource CardInnerBorder}"
+                         Foreground="{DynamicResource TextPrimary}"
+                         CornerRadius="6"/>
+                <TextBlock Text="Also supports * wildcards, matched against files inside the archive."
+                           FontSize="10"
+                           Foreground="{DynamicResource TextMuted}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBlock x:Name="ErrorText"
+                       FontSize="11.5"
+                       Foreground="{DynamicResource AccentRed}"
+                       TextWrapping="Wrap"
+                       IsVisible="False"/>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button x:Name="CancelButton"
+                        Content="Cancel"
+                        Padding="12,6"
+                        CornerRadius="8"
+                        Background="{DynamicResource ButtonBg}"
+                        Foreground="{DynamicResource TextPrimary}"/>
+                <Button x:Name="ConfirmButton"
+                        Content="Add source"
+                        Padding="14,6"
+                        CornerRadius="8"
+                        FontWeight="SemiBold"
+                        Background="{DynamicResource AccentBlue}"
+                        Foreground="White"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</Window>

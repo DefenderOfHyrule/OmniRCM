@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OmniRCM.TextPromptDialog"
+        Title="OmniRCM"
+        Width="380"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource CardBg}">
+
+    <Border Padding="20" BorderThickness="0">
+        <StackPanel Spacing="14">
+
+            <StackPanel Spacing="4">
+                <TextBlock x:Name="TitleText"
+                           FontSize="15" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock x:Name="DescriptionText"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextMuted}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBox x:Name="InputBox"
+                     FontSize="13"
+                     Padding="10,8"
+                     Background="{DynamicResource CardInner}"
+                     BorderBrush="{DynamicResource CardInnerBorder}"
+                     Foreground="{DynamicResource TextPrimary}"
+                     CornerRadius="6"/>
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button x:Name="CancelButton"
+                        Content="Cancel"
+                        Padding="12,6"
+                        CornerRadius="8"
+                        Background="{DynamicResource ButtonBg}"
+                        Foreground="{DynamicResource TextPrimary}"/>
+                <Button x:Name="ConfirmButton"
+                        Content="Save"
+                        Padding="14,6"
+                        CornerRadius="8"
+                        FontWeight="SemiBold"
+                        Background="{DynamicResource AccentBlue}"
+                        Foreground="White"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</Window>

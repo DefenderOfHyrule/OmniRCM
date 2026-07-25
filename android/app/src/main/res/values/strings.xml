@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OmniRCM</string>
+    <string name="status_connected">RCM device connected</string>
+    <string name="status_waiting">Waiting for RCM device…</string>
+    <string name="section_payloads">Payloads</string>
+    <string name="section_log">Log</string>
+    <string name="btn_fetch">Fetch payloads</string>
+    <string name="btn_add_custom">Add custom</string>
+    <string name="btn_inject">Inject</string>
+    <string name="btn_clear">Clear</string>
+    <string name="auto_inject_label">Auto-inject on device connect</string>
+    <string name="status_result_success">Injection successful</string>
+    <string name="status_result_patched_v1">Patched V1 console</string>
+    <string name="status_result_patched_v2">V2/Mariko console</string>
+    <string name="status_result_error">Injection failed</string>
+    <string name="btn_toggle_theme">Toggle theme</string>
+    <string name="btn_show_log">Log</string>
+    <string name="result_panel_title_success">✓ Injection successful</string>
+    <string name="result_panel_title_patched_v1">✗ Patched V1 console</string>
+    <string name="result_panel_title_patched_v2">✗ V2/Mariko console</string>
+    <string name="result_panel_title_error">✗ Injection Failed</string>
+    <string name="result_panel_detail_success">The payload was sent successfully. The Switch should now be booted into the selected payload. You may disconnect the USB cable and continue to follow the guide.</string>
+    <string name="result_panel_detail_patched_v1">This console has an updated bootROM and cannot be exploited via RCM.\n\n<b>Note:</b> If you get this result with a <b><i>known unpatched console</i></b>, please retry payload injection. Enable the log at the top and see if the transfer timed out at 61440 or 65536; if it did, try a different (shorter) USB cable.</string>    <string name="result_panel_detail_patched_v2">This is a Mariko (V2) console. The fusee-gelee exploit does not apply to this hardware revision.</string>
+    <string name="result_panel_detail_error">An error occurred during injection. Check the log for details. Make sure the device was freshly put in RCM and the cable is properly connected.</string>
+    <string name="result_panel_dismiss">Dismiss</string>
+    <string name="btn_credits">Credits</string>
+    <string name="credits_title">About OmniRCM</string>
+    <string name="credits_body">Payload injector for the Nintendo Switch, created and designed by DefenderOfHyrule.</string>
+    <string name="credits_github">github.com/DefenderOfHyrule</string>
+    <string name="btn_check_updates">Check for updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_none">You\'re on the latest version.</string>
+    <string name="update_error">Could not check for updates.</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">Version %1$s is available (you have %2$s). Download now?</string>
+    <string name="update_download">Download</string>
+    <string name="update_cancel">Cancel</string>
+    <string name="update_install_permission_title">Allow installs from OmniRCM</string>
+    <string name="update_install_permission_message">To install the update, allow OmniRCM to install unknown apps on the next screen, then come back and try again.</string>
+    <string name="update_install_permission_settings">Open settings</string>
+</resources>

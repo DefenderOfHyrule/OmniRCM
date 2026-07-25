@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>13</LangVersion>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+        <MacOSXBundleIcon>Assets/icon.icns</MacOSXBundleIcon>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+        <AssemblyName>OmniRCM</AssemblyName>
+        <RootNamespace>OmniRCM</RootNamespace>
+        <TrimMode>copyused</TrimMode>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) Or $(RuntimeIdentifier.StartsWith('win'))">
+        <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) Or $(RuntimeIdentifier.StartsWith('osx'))">
+        <DefineConstants>$(DefineConstants);MACOS</DefineConstants>
+        <SupportedOSPlatformVersion>10.15</SupportedOSPlatformVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="($([MSBuild]::IsOSPlatform('Linux')) Or $(RuntimeIdentifier.StartsWith('linux'))) And !$(RuntimeIdentifier.StartsWith('osx')) And !$(RuntimeIdentifier.StartsWith('win'))">
+        <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia"                 Version="11.2.7" />
+        <PackageReference Include="Avalonia.Desktop"         Version="11.2.7" />
+        <PackageReference Include="Avalonia.Themes.Fluent"   Version="11.2.7" />
+        <PackageReference Include="Avalonia.Fonts.Inter"     Version="11.2.7" />
+        <PackageReference Condition="'$(Configuration)' == 'Debug'"
+                          Include="Avalonia.Diagnostics"     Version="11.2.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) Or $(RuntimeIdentifier.StartsWith('win'))">
+        <EmbeddedResource Include="libs\windows\omnircm-wdi.dll"
+                          LogicalName="OmniRCM.omnircm_wdi.dll" />
+    </ItemGroup>
+
+
+</Project>

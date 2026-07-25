@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.OmniRCM" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#006494</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#C8E6FF</item>
+        <item name="colorOnPrimaryContainer">#001E31</item>
+        <item name="colorSecondary">#4A6278</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#CDE7FF</item>
+        <item name="colorOnSecondaryContainer">#051E2C</item>
+        <item name="colorSurface">#F0F4F8</item>
+        <item name="colorOnSurface">#1A2530</item>
+        <item name="colorSurfaceVariant">#D8E4EE</item>
+        <item name="colorOnSurfaceVariant">#4A6278</item>
+    </style>
+
+    <style name="Theme.OmniRCM.Invisible" parent="Theme.OmniRCM">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+
+</resources>
