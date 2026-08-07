@@ -24,9 +24,7 @@ public static class UpdateChecker
             return "win-x64";
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-                ? "osx-arm64"
-                : "osx-x64";
+            return "osx";
 
         return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
             ? "linux-arm64"

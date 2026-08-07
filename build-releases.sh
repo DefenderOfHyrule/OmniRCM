@@ -100,6 +100,23 @@ make_zip() {
     fi
 }
 
+lipo_bin() {
+    local out="$1" in_a="$2" in_b="$3" tool=""
+    if command -v lipo >/dev/null 2>&1; then
+        tool="lipo"
+    elif command -v llvm-lipo >/dev/null 2>&1; then
+        tool="llvm-lipo"
+    else
+        tool="$(compgen -c llvm-lipo- 2>/dev/null | sort -V | tail -1)"
+    fi
+
+    if [ -z "$tool" ]; then
+        echo "  [ERROR] No lipo/llvm-lipo(-N) found."
+        exit 1
+    fi
+    "$tool" -create -output "$out" "$in_a" "$in_b"
+}
+
 app_bundle() {
     local rid="$1" exe_name="$2" arch="${3:-x86_64}"
     local APP="$OUT/$rid/OmniRCM.app"
@@ -107,19 +124,12 @@ app_bundle() {
     cp "$OUT/$rid/$exe_name" "$APP/Contents/MacOS/OmniRCM"
     chmod +x "$APP/Contents/MacOS/OmniRCM"
 
-    local DYLIB_SRC="$SCRIPT_DIR/libs/macos/$arch/libusb-omnircm.dylib"
+    local DYLIB_SRC="$SCRIPT_DIR/libs/macos/libusb-omnircm.dylib"
     if [ -f "$DYLIB_SRC" ]; then
         cp "$DYLIB_SRC" "$APP/Contents/MacOS/libusb-omnircm.dylib"
-        echo "  bundled libusb ($arch)"
+        echo "  bundled libusb"
     else
         echo "  [WARN] $DYLIB_SRC not found."
-    fi
-
-    local ARCH_ENTRY=""
-    if [ "$arch" != "x86_64" ]; then
-        ARCH_ENTRY="
-    <key>LSArchitecturePriority</key>
-    <array><string>$arch</string></array>"
     fi
 
     cat > "$APP/Contents/Info.plist" << PLIST
@@ -133,7 +143,9 @@ app_bundle() {
     <key>CFBundlePackageType</key>        <string>APPL</string>
     <key>CFBundleShortVersionString</key> <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>     <string>10.15</string>
-    <key>NSHighResolutionCapable</key>    <true/>${ARCH_ENTRY}
+    <key>NSHighResolutionCapable</key>    <true/>
+    <key>LSArchitecturePriority</key>
+    <array><string>arm64</string><string>x86_64</string></array>
     <key>CFBundleIconFile</key>           <string>AppIcon</string>
 </dict>
 </plist>
@@ -154,6 +166,7 @@ sign_and_notarize() {
         fi
         echo "  signing with codesign ($APPLE_SIGN_ID)..."
         codesign --force --deep --timestamp --options runtime \
+            --entitlements "$SCRIPT_DIR/OmniRCM-macos.entitlements" \
             --sign "$APPLE_SIGN_ID" "$app"
         codesign --verify --deep --strict --verbose=2 "$app"
         echo "  ✓ signed"
@@ -189,7 +202,9 @@ sign_and_notarize() {
         fi
         echo "  signing with rcodesign..."
         rcodesign sign --p12-file "$APPLE_P12" --p12-password-file "$APPLE_P12_PW" \
-            --code-signature-flags runtime "$app"
+            --code-signature-flags runtime \
+            --entitlements-xml-path "$SCRIPT_DIR/OmniRCM-macos.entitlements" \
+            "$app"
         echo "  ✓ signed"
 
         if [ -n "${APPLE_NOTARY_KEY:-}" ]; then
@@ -214,21 +229,22 @@ mv "$OUT/linux-arm64/OmniRCM" "$OUT/OmniRCM-linux-arm64"
 chmod +x "$OUT/OmniRCM-linux-arm64"
 echo "✓  OmniRCM-linux-arm64"
 
-publish osx-x64 "macOS x64"
-mv "$OUT/osx-x64/OmniRCM" "$OUT/osx-x64/OmniRCM-osx-x64"
-chmod +x "$OUT/osx-x64/OmniRCM-osx-x64"
-app_bundle osx-x64 OmniRCM-osx-x64 x86_64
-sign_and_notarize "$OUT/osx-x64/OmniRCM.app"
-make_zip "$OUT/osx-x64/OmniRCM.app" "$OUT/OmniRCM-osx-x64.zip"
-echo "✓  OmniRCM-osx-x64.zip"
+publish osx-x64   "macOS x64 (slice)"
+publish osx-arm64 "macOS ARM64 (slice)"
 
-publish osx-arm64 "macOS ARM64 (Apple Silicon)"
-mv "$OUT/osx-arm64/OmniRCM" "$OUT/osx-arm64/OmniRCM-osx-arm64"
-chmod +x "$OUT/osx-arm64/OmniRCM-osx-arm64"
-app_bundle osx-arm64 OmniRCM-osx-arm64 arm64
-sign_and_notarize "$OUT/osx-arm64/OmniRCM.app"
-make_zip "$OUT/osx-arm64/OmniRCM.app" "$OUT/OmniRCM-osx-arm64.zip"
-echo "✓  OmniRCM-osx-arm64.zip"
+echo ""
+echo "- Merging into a universal (arm64 + x64) macOS binary..."
+mkdir -p "$OUT/osx"
+
+lipo_bin "$OUT/osx/OmniRCM" \
+    "$OUT/osx-x64/OmniRCM" "$OUT/osx-arm64/OmniRCM"
+chmod +x "$OUT/osx/OmniRCM"
+echo "  ✓ universal executable"
+
+app_bundle osx OmniRCM universal
+sign_and_notarize "$OUT/osx/OmniRCM.app"
+make_zip "$OUT/osx/OmniRCM.app" "$OUT/OmniRCM-osx.zip"
+echo "✓  OmniRCM-osx.zip"
 
 echo ""
 echo "════════════════════════════════"
