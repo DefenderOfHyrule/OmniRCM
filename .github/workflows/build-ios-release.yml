@@ -73,7 +73,7 @@ jobs:
 
           git add repo
           if ! git diff --cached --quiet; then
-            git commit -m "Update Sileo repo for ${{ github.ref_name }}"
+            git commit -m "[skip ci] Update Sileo repo for ${{ github.ref_name }}"
             git push origin main
           else
             echo "No changes to the Sileo repo"
