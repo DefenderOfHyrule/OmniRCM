@@ -42,7 +42,7 @@ OmniRCM_LDFLAGS = -lz
 ADDITIONAL_CFLAGS = -F$(THEOS)/vendor/frameworks
 
 OmniRCM_CODESIGN_FLAGS = -SOmniRCM.entitlements
-OmniRCM_INSTALL_PATH = /var/jb/Applications
+OmniRCM_INSTALL_PATH = /Applications
 
 OmniRCM_INFOPLIST_FILE = Resources/Info.plist
 
