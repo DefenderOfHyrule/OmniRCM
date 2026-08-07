@@ -15,8 +15,7 @@ You can download the latest release of OmniRCM for your operating system from th
 | Windows x64                           | `OmniRCM-win-x64.exe`                                                  |
 | Linux x64                             | `OmniRCM-linux-x64`                                                    |
 | Linux arm64                           | `OmniRCM-linux-arm64`                                                  |
-| macOS x64                             | `OmniRCM-osx-x64.zip`                                                  |
-| macOS arm64                           | `OmniRCM-osx-arm64.zip`                                                |
+| macOS (x64, arm64)                    | `OmniRCM-osx.zip`                                                      |
 | Android (x64, x86, armv7, armv8)      | `OmniRCM-android.apk`                                                  |
 | iOS (release .deb, rootful/rootless)  | `OmniRCM-iOS-rootful.deb` or `OmniRCM-iOS-rootless.deb`                |
 | iOS (Sileo)                           | [OmniRCM Sileo repository](https://omnircm.nintendohomebrew.com/repo/) |
@@ -61,7 +60,7 @@ For Linux, you will likely want to set up root-less payload injection. To do thi
 1. Click the red `Setup udev` button near the top of the OmniRCM window,
 1. Fill in your root password in the dialogue box that appears,
 1. Click `Install`,
-1. Log out and back in. On some distributious (notably, Fedora) require a full reboot for group membership to take effect.
+1. Log out and back in. On some distributions (notably, Fedora) require a full reboot for group membership to take effect.
 
 Once you've done this, you can continue with [Using OmniRCM](#using-omnircm).
 
@@ -71,13 +70,9 @@ For macOS,
 
 1. [Put your switch in RCM](https://switch.hacks.guide/user_guide/rcm/entering_rcm),
 1. Plug your Switch into your mac via USB,
-1. Extract the `OmniRCM-osx-(architecture).zip` archive somewhere,
-    > You will need to 'trust' the `OmniRCM.app` executable before being able to open it. To do this, you can do the following:
-    > 1. Open a terminal window.
-    > 1. Enter the following command: `xattr -dr com.apple.quarantine /path/to/OmniRCM.app` (replacing /path/to with the actual path to the executable).
-    > You should now be able to double click the app to open it from Finder.
+1. Extract the `OmniRCM-osx.zip` archive somewhere (if needed, usually automatic),
 1. Open `OmniRCM.app` from Finder.
-
+    
 Once you've done this, you can continue with [Using OmniRCM](#using-omnircm).
 
 ## Building from source

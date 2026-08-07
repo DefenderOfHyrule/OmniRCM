@@ -13,7 +13,7 @@ A native Android payload injector for the Nintendo Switch.
 
 Usage is simple:
 
-1. Install the `app-debug.apk` from the [releases](https://github.com/DefenderOfHyrule/OmniRCM/releases/latest) page,
+1. Install the `OmniRCM-android.apk` from the [releases](https://github.com/DefenderOfHyrule/OmniRCM/releases/latest) page,
 1. Open the app from your home menu,
 1. [Put your switch in RCM](https://switch.hacks.guide/user_guide/rcm/entering_rcm),
 1. Plug your Switch into your device via USB,
