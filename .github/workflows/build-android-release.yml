@@ -35,9 +35,6 @@ jobs:
       - name: Build for Android
         run: ./gradlew assembleDebug
 
-      - name: Rename apk for release
-        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/OmniRCM-android.apk
-
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
         # ID used to access action output
@@ -51,10 +48,13 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
 
+      - name: Rename apk for release
+        run: mv ${{steps.sign_app.outputs.signedReleaseFile}} /tmp/OmniRCM-android.apk
+
       - name: Publish to draft release
         uses: softprops/action-gh-release@v2
         with:
           name: OmniRCM ${{ github.ref_name }}
           draft: true
           generate_release_notes: true
-          files: ${{steps.sign_app.outputs.signedReleaseFile}}
+          files: /tmp/OmniRCM-android.apk
