@@ -1,0 +1,80 @@
+name: iOS Release
+on:
+  push:
+    tags:
+      - "v*"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ios
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Check cache
+        run: |
+          echo upstream_heads=`git ls-remote https://github.com/theos/theos | head -n 1 | cut -f 1`-`git ls-remote https://github.com/theos/sdks | head -n 1 | cut -f 1` >> $GITHUB_ENV
+
+      - name: Use cache
+        id: cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/theos
+          key: ${{ runner.os }}-${{ env.upstream_heads }}
+
+      - name: Prepare Theos
+        uses: Randomblock1/theos-action@v1.5
+
+      - name: Vendor IOKit Headers
+        run: |
+          chmod +x vendor-iokit-headers.sh
+          ./vendor-iokit-headers.sh
+
+      - name: Build packages
+        run: |
+          rm -f packages/*
+          chmod +x build-variants.sh
+          ./build-variants.sh
+
+      - name: Rename release debs
+        run: |
+          mv packages/*_iphoneos-arm.deb packages/OmniRCM-iOS-rootful.deb
+          mv packages/*_iphoneos-arm64.deb packages/OmniRCM-iOS-rootless.deb
+
+      - name: Publish to draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OmniRCM ${{ github.ref_name }}
+          draft: true
+          files: ${{ github.workspace }}/ios/packages/*.deb
+
+      - name: Update Sileo repo
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+
+          mkdir -p repo/debs
+          cp ios/packages/*.deb repo/debs/
+
+          cd repo
+          dpkg-scanpackages -m debs/ > Packages
+          gzip -k -f Packages
+          cd ..
+
+          git add repo
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Sileo repo for ${{ github.ref_name }}"
+            git push origin main
+          else
+            echo "No changes to the Sileo repo"
+          fi

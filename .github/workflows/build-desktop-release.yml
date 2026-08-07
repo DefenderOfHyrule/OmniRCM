@@ -1,0 +1,50 @@
+name: Desktop Release
+on:
+  push:
+    tags:
+      - "v*"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Dotnet
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
+        with:
+          packages: dotnet-sdk-10.0
+          add-repository: ppa:dotnet/backports
+
+      - name: Setup rcodesign
+        uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: apple-codesign
+
+      - name: Build
+        env:
+          APPLE_P12_B64: ${{ secrets.APPLE_P12_B64 }}
+          APPLE_P12_PW_TXT: ${{ secrets.APPLE_P12_PW }}
+          API_KEY: ${{ secrets.APP_STORE_API_KEY }}
+          APPLE_P12: "/tmp/key.p12"
+          APPLE_P12_PW: "/tmp/p12pw"
+          APPLE_NOTARY_KEY: "/tmp/app_store_key.json"
+        run: |
+          echo $APPLE_P12_B64 | base64 --decode > /tmp/key.p12
+          echo $API_KEY > /tmp/app_store_key.json
+          echo $APPLE_P12_PW_TXT > /tmp/p12pw
+          chmod +x build-releases.sh
+          ./build-releases.sh
+
+      - name: Publish to draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OmniRCM ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ github.workspace }}/releases/OmniRCM-win-x64.exe
+            ${{ github.workspace }}/releases/OmniRCM-osx.zip
+            ${{ github.workspace }}/releases/OmniRCM-linux-x64
+            ${{ github.workspace }}/releases/OmniRCM-linux-arm64

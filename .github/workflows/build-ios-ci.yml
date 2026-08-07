@@ -1,0 +1,56 @@
+name: iOS CI
+on: push
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ios
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Check cache
+        run: |
+          echo upstream_heads=`git ls-remote https://github.com/theos/theos | head -n 1 | cut -f 1`-`git ls-remote https://github.com/theos/sdks | head -n 1 | cut -f 1` >> $GITHUB_ENV
+
+      - name: Use cache
+        id: cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/theos
+          key: ${{ runner.os }}-${{ env.upstream_heads }}
+
+      - name: Prepare Theos
+        uses: Randomblock1/theos-action@v1.5
+
+      - name: Vendor IOKit Headers
+        run: |
+          chmod +x vendor-iokit-headers.sh
+          ./vendor-iokit-headers.sh
+
+      - name: Build packages
+        run: |
+          rm -f packages/*
+          chmod +x build-variants.sh
+          ./build-variants.sh
+
+      - name: Rename release debs
+        run: |
+          mv packages/*_iphoneos-arm.deb packages/OmniRCM-iOS-rootful.deb
+          mv packages/*_iphoneos-arm64.deb packages/OmniRCM-iOS-rootless.deb
+
+      - name: Upload rootful
+        uses: actions/upload-artifact@v7
+        with:
+          name: "iOS rootful"
+          path: ${{ github.workspace }}/ios/packages/OmniRCM-iOS-rootful.deb
+          
+      - name: Upload rootless
+        uses: actions/upload-artifact@v7
+        with:
+          name: "iOS rootless"
+          path: ${{ github.workspace }}/ios/packages/OmniRCM-iOS-rootless.deb

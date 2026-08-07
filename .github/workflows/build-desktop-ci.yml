@@ -1,0 +1,63 @@
+name: Desktop CI
+on: push
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Dotnet
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
+        with:
+          packages: dotnet-sdk-10.0
+          add-repository: ppa:dotnet/backports
+
+      - name: Setup rcodesign
+        uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: apple-codesign
+
+      - name: Build
+        env:
+          APPLE_P12_B64: ${{ secrets.APPLE_P12_B64 }}
+          APPLE_P12_PW_TXT: ${{ secrets.APPLE_P12_PW }}
+          API_KEY: ${{ secrets.APP_STORE_API_KEY }}
+          APPLE_P12: "/tmp/key.p12"
+          APPLE_P12_PW: "/tmp/p12pw"
+          APPLE_NOTARY_KEY: "/tmp/app_store_key.json"
+        run: |
+          echo $APPLE_P12_B64 | base64 --decode > /tmp/key.p12
+          echo $API_KEY > /tmp/app_store_key.json
+          echo $APPLE_P12_PW_TXT > /tmp/p12pw
+          chmod +x build-releases.sh
+          ./build-releases.sh
+
+      - name: Upload Windows (x86_64) artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Windows (x86_64)
+          path: ./releases/OmniRCM-win-x64.exe
+          archive: false
+
+      - name: Upload macOS (universal) artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: macOS (universal)
+          path: ./releases/OmniRCM-osx.zip
+          archive: false
+
+      - name: Upload Linux (x86_64) artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Linux x86_64
+          path: ./releases/OmniRCM-linux-x64
+          archive: false
+          
+      - name: Upload Linux (arm64) artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Linux (arm64)
+          path: ./releases/OmniRCM-linux-arm64
+          archive: false
