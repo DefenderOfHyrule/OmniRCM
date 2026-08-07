@@ -37,24 +37,3 @@ Tag: compatible_min_ios :: 9.0
 Author: DefenderOfHyrule
 Icon: https://omnircm.nintendohomebrew.com/repo/icon.png
 Name: OmniRCM
-
-Package: io.github.omnircm.ios
-Version: 1.0.0-34+debug
-Architecture: iphoneos-arm64
-Maintainer: DefenderOfHyrule <https://github.com/DefenderOfHyrule>
-Installed-Size: 2256
-Depends: firmware (>= 9.0)
-Filename: debs/io.github.omnircm.ios_1.0.0-34+debug_iphoneos-arm64.deb
-Size: 1808286
-MD5sum: 2c6cab64e75af655ca177a7641e81dee
-SHA1: a946cdd836b7aa4f8c3658b2cfb7cea12957853d
-SHA256: c5a5cb38333a7cc8bc97d6f084c12760929258767bf7a7331f60d22695691310
-Section: Utilities
-Description: Nintendo Switch RCM payload injector with full diagnostics.
- Supports unpatched V1, patched V1, and V2/Mariko detection.
- Fetches payloads from GitHub (fusee, hekate, TegraExplorer).
-Tag: compatible_min_ios :: 9.0
-Author: DefenderOfHyrule
-Icon: https://omnircm.nintendohomebrew.com/repo/icon.png
-Name: OmniRCM
-
