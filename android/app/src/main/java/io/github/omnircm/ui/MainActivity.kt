@@ -10,8 +10,13 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.OpenableColumns
 import android.provider.Settings
+import android.text.InputType
 import android.view.View
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Button
@@ -21,6 +26,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.tabs.TabLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -28,14 +34,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.github.omnircm.OmniRcmApp
 import io.github.omnircm.R
+import io.github.omnircm.data.CustomPayloadSource
 import io.github.omnircm.data.Payload
+import io.github.omnircm.rcm.PayloadFetcher
 import io.github.omnircm.rcm.UpdateChecker
 import io.github.omnircm.rcm.UpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,6 +66,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var resultPanelTitle: TextView
     private lateinit var resultPanelDetail: TextView
     private lateinit var btnResultDismiss: Button
+
+    private lateinit var payloadsTabContent: LinearLayout
+    private lateinit var sourcesTabContent: LinearLayout
+    private lateinit var sourcesList: LinearLayout
+    private lateinit var noSourcesLabel: TextView
 
     private var logVisible = false
 
@@ -105,6 +117,29 @@ class MainActivity : AppCompatActivity() {
         resultPanelDetail = findViewById(R.id.result_panel_detail)
         btnResultDismiss  = findViewById(R.id.btn_result_dismiss)
 
+        payloadsTabContent = findViewById(R.id.payloads_tab_content)
+        sourcesTabContent  = findViewById(R.id.sources_tab_content)
+        sourcesList        = findViewById(R.id.sources_list)
+        noSourcesLabel     = findViewById(R.id.no_sources_label)
+
+        findViewById<TabLayout>(R.id.tab_layout).addOnTabSelectedListener(
+            object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab) {
+                    val showSources = tab.position == 1
+                    payloadsTabContent.visibility = if (showSources) View.GONE else View.VISIBLE
+                    sourcesTabContent.visibility = if (showSources) View.VISIBLE else View.GONE
+                }
+                override fun onTabUnselected(tab: TabLayout.Tab) {}
+                override fun onTabReselected(tab: TabLayout.Tab) {}
+            }
+        )
+
+        findViewById<Button>(R.id.btn_add_source).setOnClickListener {
+            showAddSourceDialog()
+        }
+
+        refreshSourcesList()
+
         val recycler: RecyclerView = findViewById(R.id.payload_list)
         adapter = PayloadAdapter(
             onSelected = { payload ->
@@ -112,6 +147,7 @@ class MainActivity : AppCompatActivity() {
                 updateInjectButton()
                 showSelectedPayload(payload)
             },
+            onRename = { payload -> showRenamePayloadDialog(payload) },
             onDelete = { payload ->
                 AlertDialog.Builder(this)
                     .setTitle("Delete payload")
@@ -312,25 +348,145 @@ class MainActivity : AppCompatActivity() {
 
     private fun importPayload(uri: Uri) {
         try {
-            val rawName = uri.lastPathSegment?.substringAfterLast('/')
+            val displayName = queryDisplayName(uri)
+                ?: uri.lastPathSegment?.substringAfterLast('/')
                 ?: "custom_${System.currentTimeMillis()}.bin"
-            val name = if (rawName.endsWith(".bin")) rawName else "$rawName.bin"
-            val dest = File(io.github.omnircm.rcm.PayloadFetcher.customDir(), name)
-            contentResolver.openInputStream(uri)?.use { src ->
-                FileOutputStream(dest).use { src.copyTo(it) }
-            }
-            pendingSelectName = name
+            val dest = contentResolver.openInputStream(uri)?.use { src ->
+                PayloadFetcher.importCustomPayload(displayName, src)
+            } ?: throw Exception("Could not open input stream for payload")
+            pendingSelectName = dest.name
             vm.refreshPayloads()
-            vm.logMessage("Added custom payload: $name")
+            vm.logMessage("Added custom payload: ${dest.name}")
         } catch (e: Exception) {
             vm.logMessage("[ERROR] Could not import payload: ${e.message}")
         }
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        if (uri.scheme != "content") return null
+        return try {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
+                }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun showRenamePayloadDialog(payload: Payload) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+            setText(payload.name)
+            setSelection(text.length)
+        }
+        val pad = (16 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(this).apply {
+            setPadding(pad, pad / 2, pad, 0)
+            addView(input)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename payload")
+            .setView(container)
+            .setPositiveButton("Rename") { _, _ ->
+                val newName = input.text?.toString()?.trim().orEmpty()
+                if (newName.isEmpty()) {
+                    vm.logMessage("[ERROR] Payload name cannot be empty.")
+                    return@setPositiveButton
+                }
+                val renamed = vm.renameCustomPayload(payload, newName)
+                if (renamed != null) {
+                    updateInjectButton()
+                    if (vm.selectedPayload == renamed) showSelectedPayload(renamed)
+                    vm.logMessage("Renamed payload to: ${renamed.name}")
+                } else {
+                    vm.logMessage("[ERROR] Could not rename payload.")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showSelectedPayload(payload: io.github.omnircm.data.Payload) {
         selectedPayloadCard.visibility = View.VISIBLE
         selectedPayloadName.text = payload.name
         selectedPayloadSize.text = "${String.format("%,d", payload.file.length())} bytes"
+    }
+
+    private fun refreshSourcesList() {
+        val sources = PayloadFetcher.getCustomSources()
+        sourcesList.removeAllViews()
+        noSourcesLabel.visibility = if (sources.isEmpty()) View.VISIBLE else View.GONE
+        for (source in sources) {
+            val row = layoutInflater.inflate(R.layout.item_payload_source, sourcesList, false)
+            row.findViewById<TextView>(R.id.source_name).text = source.name
+            row.findViewById<TextView>(R.id.source_repo).text = source.repo
+            row.findViewById<ImageButton>(R.id.btn_delete_source).setOnClickListener {
+                AlertDialog.Builder(this)
+                    .setTitle("Delete source")
+                    .setMessage("Remove \"${source.name}\" from custom sources?")
+                    .setPositiveButton("Delete") { _, _ ->
+                        PayloadFetcher.removeCustomSource(source.name)
+                        refreshSourcesList()
+                        vm.refreshPayloads()
+                        val current = vm.selectedPayload
+                        if (current != null && !current.isCustom && current.name == source.name) {
+                            vm.selectedPayload = null
+                            selectedPayloadCard.visibility = View.GONE
+                        }
+                        updateInjectButton()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            sourcesList.addView(row)
+        }
+    }
+
+    private fun showAddSourceDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_add_source, null)
+        val nameInput = view.findViewById<EditText>(R.id.source_name_input)
+        val repoInput = view.findViewById<EditText>(R.id.source_repo_input)
+        val assetInput = view.findViewById<EditText>(R.id.source_asset_input)
+        val zipCheckbox = view.findViewById<CheckBox>(R.id.source_zip_checkbox)
+        val zipPatternGroup = view.findViewById<LinearLayout>(R.id.source_zip_pattern_group)
+        val zipPatternInput = view.findViewById<EditText>(R.id.source_zip_pattern_input)
+        val errorText = view.findViewById<TextView>(R.id.source_error_text)
+
+        zipCheckbox.setOnCheckedChangeListener { _, checked ->
+            zipPatternGroup.visibility = if (checked) View.VISIBLE else View.GONE
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_add_source_title)
+            .setView(view)
+            .setPositiveButton(R.string.btn_add_source_confirm, null)
+            .setNegativeButton(R.string.update_cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val source = CustomPayloadSource(
+                    name = nameInput.text?.toString().orEmpty(),
+                    repo = repoInput.text?.toString().orEmpty(),
+                    assetMatch = assetInput.text?.toString().orEmpty(),
+                    isZip = zipCheckbox.isChecked,
+                    zipInnerPattern = zipPatternInput.text?.toString().orEmpty(),
+                )
+                val error = PayloadFetcher.addCustomSource(source)
+                if (error != null) {
+                    errorText.text = error
+                    errorText.visibility = View.VISIBLE
+                    return@setOnClickListener
+                }
+                refreshSourcesList()
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
     }
 
     private fun showCredits() {

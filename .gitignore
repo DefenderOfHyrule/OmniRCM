@@ -454,3 +454,5 @@ ios/.theos/*
 ios2/.theos/*
 ios3/.theos/*
 *.zip
+
+bump-version.sh

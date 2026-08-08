@@ -1,9 +1,12 @@
 package io.github.omnircm.rcm
 
+import android.content.Context
 import io.github.omnircm.OmniRcmApp
+import io.github.omnircm.data.CustomPayloadSource
 import io.github.omnircm.data.Payload
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -14,6 +17,8 @@ data class RemotePayloadSpec(
     val repo: String,
     val assetFilter: (String) -> Boolean,
     val postProcess: ((File) -> File)? = null,
+    val cacheKey: String = name,
+    val isCustomSource: Boolean = false,
 )
 
 object PayloadFetcher {
@@ -34,7 +39,7 @@ object PayloadFetcher {
         }
         .build()
 
-    val specs = listOf(
+    val builtinSpecs = listOf(
         RemotePayloadSpec(
             name = "fusee",
             repo = "Atmosphere-NX/Atmosphere",
@@ -53,10 +58,131 @@ object PayloadFetcher {
         ),
     )
 
+    private val reservedSourceNames = setOf("fusee", "hekate", "tegraexplorer", "custom")
+
+    private fun prefs() =
+        OmniRcmApp.instance.getSharedPreferences("omnircm_prefs", Context.MODE_PRIVATE)
+
+    fun getCustomSources(): List<CustomPayloadSource> {
+        val raw = prefs().getString("custom_sources", null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                CustomPayloadSource(
+                    name = o.getString("name"),
+                    repo = o.getString("repo"),
+                    assetMatch = o.getString("assetMatch"),
+                    isZip = o.optBoolean("isZip", false),
+                    zipInnerPattern = o.optString("zipInnerPattern", "*.bin"),
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun setCustomSources(sources: List<CustomPayloadSource>) {
+        val arr = JSONArray()
+        for (s in sources) {
+            val o = JSONObject()
+            o.put("name", s.name)
+            o.put("repo", s.repo)
+            o.put("assetMatch", s.assetMatch)
+            o.put("isZip", s.isZip)
+            o.put("zipInnerPattern", s.zipInnerPattern)
+            arr.put(o)
+        }
+        prefs().edit().putString("custom_sources", arr.toString()).apply()
+    }
+
+    fun addCustomSource(source: CustomPayloadSource): String? {
+        val name = source.name.trim()
+        val repo = source.repo.trim()
+        val assetMatch = source.assetMatch.trim()
+
+        if (name.isEmpty() || repo.isEmpty() || assetMatch.isEmpty()) return "All fields are required."
+        if (!repo.contains('/')) return "Repository must be in the form owner/repo."
+        if (reservedSourceNames.contains(name.lowercase())) return "That name is reserved, please choose another."
+
+        val existing = getCustomSources()
+        if (existing.any { it.name.equals(name, ignoreCase = true) }) return "A source with that name already exists."
+
+        val cleaned = source.copy(
+            name = name,
+            repo = repo,
+            assetMatch = assetMatch,
+            zipInnerPattern = source.zipInnerPattern.trim().ifEmpty { "*.bin" },
+        )
+        setCustomSources(existing + cleaned)
+        return null
+    }
+
+    fun removeCustomSource(name: String) {
+        val existing = getCustomSources()
+        val target = existing.firstOrNull { it.name == name }
+        setCustomSources(existing.filterNot { it.name == name })
+        if (target != null) {
+            val cacheKey = "custom_" + sanitizeKey(target.name)
+            cacheDir.listFiles()?.forEach { f ->
+                val matches = f.name == "$cacheKey.version" ||
+                    f.name == "$cacheKey.localpath" ||
+                    f.name.startsWith("${cacheKey}__") ||
+                    f.name == "__${cacheKey}_tmp__"
+                if (matches) {
+                    if (f.isDirectory) f.deleteRecursively() else f.delete()
+                }
+            }
+        }
+    }
+
+    private fun sanitizeKey(name: String): String {
+        val key = name.filter { it.isLetterOrDigit() }.lowercase()
+        return key.ifEmpty { java.util.UUID.randomUUID().toString().take(8) }
+    }
+
+    private fun matchesAssetPattern(fileName: String, pattern: String): Boolean {
+        return if (pattern.contains('*') || pattern.contains('?')) {
+            wildcardToRegex(pattern).matches(fileName)
+        } else {
+            fileName.contains(pattern, ignoreCase = true)
+        }
+    }
+
+    private fun wildcardToRegex(pattern: String): Regex {
+        val sb = StringBuilder("^")
+        for (c in pattern) {
+            when (c) {
+                '*' -> sb.append(".*")
+                '?' -> sb.append('.')
+                else -> sb.append(Regex.escape(c.toString()))
+            }
+        }
+        sb.append("$")
+        return Regex(sb.toString(), RegexOption.IGNORE_CASE)
+    }
+
+    private fun buildCustomSpec(source: CustomPayloadSource): RemotePayloadSpec {
+        val cacheKey = "custom_" + sanitizeKey(source.name)
+        return RemotePayloadSpec(
+            name = source.name,
+            cacheKey = cacheKey,
+            repo = source.repo,
+            assetFilter = { matchesAssetPattern(it, source.assetMatch) },
+            postProcess = if (source.isZip) {
+                { zipFile -> extractCustomZip(cacheKey, zipFile, source.zipInnerPattern) }
+            } else null,
+            isCustomSource = true,
+        )
+    }
+
+    private fun allSpecs(): List<RemotePayloadSpec> =
+        builtinSpecs + getCustomSources().map(::buildCustomSpec)
+
     fun getCachedPayloads(): List<Payload> {
         val result = mutableListOf<Payload>()
-        for (spec in specs) {
-            val versionFile = File(cacheDir, "${spec.name}.version")
+        for (spec in allSpecs()) {
+            val versionFile = File(cacheDir, "${spec.cacheKey}.version")
             val version = if (versionFile.exists()) versionFile.readText().trim() else null
             val file = resolveLocalFile(spec) ?: continue
             result.add(Payload(spec.name, file, isRemote = true, version = version))
@@ -73,8 +199,46 @@ object PayloadFetcher {
             ?: emptyList()
     }
 
+    private fun sanitizeBaseName(raw: String): String {
+        val cleaned = raw.trim()
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .trim(' ', '.')
+        return cleaned.ifBlank { "payload" }
+    }
+
+    private fun baseNameFrom(displayName: String): String {
+        val lastSegment = displayName.substringAfterLast('/').substringAfterLast('\\')
+        val withoutExt = if (lastSegment.contains('.')) lastSegment.substringBeforeLast('.') else lastSegment
+        return sanitizeBaseName(withoutExt)
+    }
+
+    private fun uniqueCustomFile(baseName: String): File {
+        val dir = customDir()
+        var candidate = File(dir, "$baseName.bin")
+        var counter = 1
+        while (candidate.exists()) {
+            candidate = File(dir, "$baseName ($counter).bin")
+            counter++
+        }
+        return candidate
+    }
+
+    fun importCustomPayload(displayName: String, input: java.io.InputStream): File {
+        val dest = uniqueCustomFile(baseNameFrom(displayName))
+        FileOutputStream(dest).use { out -> input.copyTo(out) }
+        return dest
+    }
+
+    fun renameCustomPayload(payload: Payload, newName: String): File? {
+        if (!payload.isCustom) return null
+        val newBase = baseNameFrom(newName)
+        if (newBase == payload.file.nameWithoutExtension) return payload.file
+        val dest = uniqueCustomFile(newBase)
+        return if (payload.file.renameTo(dest)) dest else null
+    }
+
     fun fetchAll(onLog: (String) -> Unit) {
-        for (spec in specs) {
+        for (spec in allSpecs()) {
             try {
                 onLog("Checking ${spec.name}...")
                 fetchOne(spec, onLog)
@@ -90,7 +254,7 @@ object PayloadFetcher {
         val tag = root.getString("tag_name")
         val version = tag.trimStart('v', 'V')
 
-        val versionFile = File(cacheDir, "${spec.name}.version")
+        val versionFile = File(cacheDir, "${spec.cacheKey}.version")
         val cachedVersion = if (versionFile.exists()) versionFile.readText().trim() else null
         val cachedFile = resolveLocalFile(spec)
 
@@ -117,7 +281,7 @@ object PayloadFetcher {
         if (dlUrl == null) return
 
         onLog("  Downloading ${spec.name} $tag...")
-        val tmpFile = File(cacheDir, assetName!!)
+        val tmpFile = File(cacheDir, if (spec.isCustomSource) "${spec.cacheKey}__$assetName" else assetName!!)
         downloadFile(dlUrl, tmpFile, onLog)
 
         val finalFile = if (spec.postProcess != null) {
@@ -127,6 +291,10 @@ object PayloadFetcher {
             result
         } else {
             tmpFile
+        }
+
+        if (spec.isCustomSource) {
+            File(cacheDir, "${spec.cacheKey}.localpath").writeText(finalFile.absolutePath)
         }
 
         versionFile.writeText(version)
@@ -200,7 +368,39 @@ object PayloadFetcher {
         return dest
     }
 
+    private fun extractCustomZip(cacheKey: String, zipFile: File, innerPattern: String): File {
+        val tmpDir = File(cacheDir, "__${cacheKey}_tmp__")
+        if (tmpDir.exists()) tmpDir.deleteRecursively()
+        tmpDir.mkdirs()
+
+        ZipInputStream(zipFile.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    val outFile = File(tmpDir, File(entry.name).name)
+                    FileOutputStream(outFile).use { zip.copyTo(it) }
+                }
+                entry = zip.nextEntry
+            }
+        }
+
+        val pattern = innerPattern.ifBlank { "*.bin" }
+        val regex = wildcardToRegex(pattern)
+        val match = tmpDir.listFiles()?.firstOrNull { regex.matches(it.name) }
+            ?: throw Exception("No file matching \"$pattern\" found in the downloaded archive.")
+
+        val dest = File(cacheDir, "${cacheKey}__${match.name}")
+        match.copyTo(dest, overwrite = true)
+        tmpDir.deleteRecursively()
+        return dest
+    }
+
     private fun resolveLocalFile(spec: RemotePayloadSpec): File? {
+        if (spec.isCustomSource) {
+            val marker = File(cacheDir, "${spec.cacheKey}.localpath")
+            if (!marker.exists()) return null
+            return File(marker.readText().trim()).takeIf { it.exists() }
+        }
         return if (spec.name == "hekate") {
             cacheDir.listFiles()?.firstOrNull {
                 it.name.startsWith("hekate_ctcaer") && it.extension == "bin"

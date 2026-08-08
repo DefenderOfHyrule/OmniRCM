@@ -55,6 +55,15 @@ class MainViewModel : ViewModel() {
         refreshPayloads()
     }
 
+    fun renameCustomPayload(payload: Payload, newName: String): Payload? {
+        if (!payload.isCustom) return null
+        val renamedFile = PayloadFetcher.renameCustomPayload(payload, newName) ?: return null
+        val updated = Payload(renamedFile.nameWithoutExtension, renamedFile, isCustom = true)
+        if (selectedPayload == payload) selectedPayload = updated
+        refreshPayloads()
+        return updated
+    }
+
     fun fetchPayloads() {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("Fetching payloads...")

@@ -12,6 +12,7 @@ import io.github.omnircm.data.Payload
 
 class PayloadAdapter(
     private val onSelected: (Payload) -> Unit,
+    private val onRename: ((Payload) -> Unit)? = null,
     private val onDelete: ((Payload) -> Unit)? = null,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -60,6 +61,7 @@ class PayloadAdapter(
         val radio:        RadioButton = view.findViewById(R.id.payload_radio)
         val name:         TextView    = view.findViewById(R.id.payload_name)
         val version:      TextView    = view.findViewById(R.id.payload_version)
+        val renameButton: ImageButton = view.findViewById(R.id.btn_rename_payload)
         val deleteButton: ImageButton = view.findViewById(R.id.btn_delete_payload)
     }
 
@@ -100,6 +102,13 @@ class PayloadAdapter(
                 }
                 holder.itemView.setOnClickListener(click)
                 holder.radio.setOnClickListener(click)
+
+                if (payload.isCustom && onRename != null) {
+                    holder.renameButton.visibility = View.VISIBLE
+                    holder.renameButton.setOnClickListener { onRename.invoke(payload) }
+                } else {
+                    holder.renameButton.visibility = View.GONE
+                }
 
                 if (payload.isCustom && onDelete != null) {
                     holder.deleteButton.visibility = View.VISIBLE

@@ -39,4 +39,21 @@
     <string name="update_install_permission_title">Allow installs from OmniRCM</string>
     <string name="update_install_permission_message">To install the update, allow OmniRCM to install unknown apps on the next screen, then come back and try again.</string>
     <string name="update_install_permission_settings">Open settings</string>
+    <string name="tab_payloads">Payloads</string>
+    <string name="tab_sources">Sources</string>
+    <string name="btn_add_source">+ Add</string>
+    <string name="no_sources_label">No custom sources added yet.</string>
+    <string name="dialog_add_source_title">Add payload source</string>
+    <string name="dialog_add_source_name_label">Display name</string>
+    <string name="dialog_add_source_name_hint">e.g. my-custom-payload</string>
+    <string name="dialog_add_source_repo_label">GitHub repository</string>
+    <string name="dialog_add_source_repo_hint">owner/repo</string>
+    <string name="dialog_add_source_asset_label">Release asset filename</string>
+    <string name="dialog_add_source_asset_hint">e.g. hekate_ctcaer_*_Nyx_*.zip</string>
+    <string name="dialog_add_source_asset_help">Use * as a wildcard for version numbers, or just type part of the filename.</string>
+    <string name="dialog_add_source_zip_checkbox">Asset is a .zip archive</string>
+    <string name="dialog_add_source_zip_pattern_label">File to extract from the archive</string>
+    <string name="dialog_add_source_zip_pattern_hint">hekate_ctcaer_*.bin</string>
+    <string name="dialog_add_source_zip_pattern_help">Also supports * wildcards, matched against files inside the archive.</string>
+    <string name="btn_add_source_confirm">Add source</string>
 </resources>

@@ -16,7 +16,7 @@ namespace OmniRCM;
 
 public partial class MainWindow : Window
 {
-    private static readonly OmniVersion CurrentVersion = new(1, 0, 0);
+    private static readonly OmniVersion CurrentVersion = new(1, 1, 0);
 
     private Settings _settings = Settings.Load();
 

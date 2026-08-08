@@ -6,26 +6,17 @@
     android:gravity="center_vertical"
     android:paddingStart="4dp"
     android:paddingEnd="12dp"
-    android:paddingTop="6dp"
-    android:paddingBottom="6dp"
-    android:background="?attr/selectableItemBackground">
-
-    <RadioButton
-        android:id="@+id/payload_radio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:clickable="false"
-        android:focusable="false"/>
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginStart="4dp">
+        android:orientation="vertical">
 
         <TextView
-            android:id="@+id/payload_name"
+            android:id="@+id/source_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="14sp"
@@ -33,33 +24,21 @@
             android:fontFamily="@font/inter_medium"/>
 
         <TextView
-            android:id="@+id/payload_version"
+            android:id="@+id/source_repo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="12sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone"/>
+            android:textColor="?attr/colorOnSurfaceVariant"/>
 
     </LinearLayout>
 
     <ImageButton
-        android:id="@+id/btn_rename_payload"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:src="@drawable/ic_rename_payload"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Rename payload"
-        android:visibility="gone"
-        android:layout_marginStart="4dp"/>
-
-    <ImageButton
-        android:id="@+id/btn_delete_payload"
+        android:id="@+id/btn_delete_source"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:src="@drawable/ic_delete_payload"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Delete payload"
-        android:visibility="gone"
+        android:contentDescription="Delete source"
         android:layout_marginStart="4dp"/>
 
 </LinearLayout>

@@ -6,6 +6,7 @@
 @interface MainViewController (Icons)
 + (UIImage *)rcmIconNamed:(NSString *)name pointSize:(CGFloat)pointSize;
 + (void)drawTrashIconInContext:(CGContextRef)ctx;
++ (void)drawPencilIconInContext:(CGContextRef)ctx;
 + (void)drawMoonIconInContext:(CGContextRef)ctx;
 + (void)drawSunIconInContext:(CGContextRef)ctx;
 + (void)drawListIconInContext:(CGContextRef)ctx;
@@ -42,7 +43,9 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
 @property (nonatomic, strong) UIView   *radioInner;
 @property (nonatomic, strong) UILabel  *nameLabel;
 @property (nonatomic, strong) UILabel  *versionLabel;
+@property (nonatomic, strong) UIButton *renameButton;
 @property (nonatomic, strong) UIButton *deleteButton;
+@property (nonatomic, copy) void (^onRename)(void);
 @property (nonatomic, copy) void (^onDelete)(void);
 - (void)configureWithPayload:(RCMPayload *)payload
                      selected:(BOOL)selected
@@ -89,6 +92,14 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         [textStack addArrangedSubview:self.nameLabel];
         [textStack addArrangedSubview:self.versionLabel];
 
+        self.renameButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.renameButton.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.renameButton.widthAnchor constraintEqualToConstant:32].active = YES;
+        [self.renameButton.heightAnchor constraintEqualToConstant:32].active = YES;
+        [self.renameButton setImage:[MainViewController rcmIconNamed:@"pencil" pointSize:16] forState:UIControlStateNormal];
+        [self.renameButton addTarget:self action:@selector(renameTapped) forControlEvents:UIControlEventTouchUpInside];
+        self.renameButton.hidden = YES;
+
         self.deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.deleteButton.translatesAutoresizingMaskIntoConstraints = NO;
         [self.deleteButton.widthAnchor constraintEqualToConstant:32].active = YES;
@@ -104,6 +115,7 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         row.translatesAutoresizingMaskIntoConstraints = NO;
         [row addArrangedSubview:self.radioOuter];
         [row addArrangedSubview:textStack];
+        [row addArrangedSubview:self.renameButton];
         [row addArrangedSubview:self.deleteButton];
 
         [self.contentView addSubview:row];
@@ -115,6 +127,10 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         ]];
     }
     return self;
+}
+
+- (void)renameTapped {
+    if (self.onRename) self.onRename();
 }
 
 - (void)deleteTapped {
@@ -142,6 +158,9 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
 
     self.radioOuter.layer.borderColor = (selected ? accent : onSurfaceVariant).CGColor;
     self.radioInner.backgroundColor = selected ? accent : UIColor.clearColor;
+
+    self.renameButton.hidden = !payload.isCustom;
+    self.renameButton.tintColor = onSurfaceVariant;
 
     self.deleteButton.hidden = !payload.isCustom;
     self.deleteButton.tintColor = kColourError;
@@ -207,6 +226,14 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
 @property (nonatomic, strong) UIButton *creditsButton;
 
 @property (nonatomic, strong) UITableView *payloadTable;
+
+@property (nonatomic, strong) UISegmentedControl *tabControl;
+@property (nonatomic, strong) UIView *payloadsTabContainer;
+@property (nonatomic, strong) UIView *sourcesTabContainer;
+@property (nonatomic, strong) UILabel *sourcesSectionLabel;
+@property (nonatomic, strong) UIButton *addSourceButton;
+@property (nonatomic, strong) UIStackView *sourcesListStack;
+@property (nonatomic, strong) UILabel *noSourcesLabel;
 
 - (NSAttributedString *)attributedStringForPatchedV1Detail:(NSString *)plain;
 
@@ -292,6 +319,9 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
     self.payloadsSectionLabel.textColor = onSurfaceVariant;
     self.payloadTable.separatorColor = surfaceVariant;
 
+    self.sourcesSectionLabel.textColor = onSurfaceVariant;
+    self.noSourcesLabel.textColor = onSurfaceVariant;
+
     self.selectedPayloadCard.backgroundColor = surfaceVariant;
     self.selectedPayloadNameLabel.textColor = onSurface;
     self.selectedPayloadSizeLabel.textColor = onSurfaceVariant;
@@ -314,6 +344,7 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
 
     [self setNeedsStatusBarAppearanceUpdate];
     [self.payloadTable reloadData];
+    [self reloadCustomSources];
     [self updatePill];
 }
 
@@ -374,18 +405,78 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         [self.rootStack.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor],
     ]];
 
-    [self.rootStack addArrangedSubview:[self buildPayloadSection]];
-    [self.rootStack addArrangedSubview:[self buildSelectedPayloadCard]];
-    [self.rootStack addArrangedSubview:[self buildFetchAddRow]];
-    [self.rootStack addArrangedSubview:[self buildInjectButton]];
-    [self.rootStack addArrangedSubview:[self buildAutoInjectRow]];
-    [self.rootStack addArrangedSubview:[self buildResultPanel]];
+    [self.rootStack addArrangedSubview:[self buildTabControl]];
+    [self.rootStack addArrangedSubview:[self buildPayloadsTabContainer]];
+    [self.rootStack addArrangedSubview:[self buildSourcesTabContainer]];
     [self.rootStack addArrangedSubview:[self buildLogSection]];
 
     self.selectedPayloadCard.hidden = YES;
     self.resultPanel.hidden = YES;
     self.logSection.hidden = YES;
+    self.sourcesTabContainer.hidden = YES;
+    [self reloadCustomSources];
     [self updateInjectButton];
+}
+
+- (UIView *)buildTabControl {
+    self.tabControl = [[UISegmentedControl alloc] initWithItems:@[@"Payloads", @"Sources"]];
+    self.tabControl.selectedSegmentIndex = 0;
+    [self.tabControl addTarget:self action:@selector(tabChanged:) forControlEvents:UIControlEventValueChanged];
+    return self.tabControl;
+}
+
+- (void)tabChanged:(UISegmentedControl *)sender {
+    BOOL showSources = sender.selectedSegmentIndex == 1;
+    self.payloadsTabContainer.hidden = showSources;
+    self.sourcesTabContainer.hidden = !showSources;
+}
+
+- (UIView *)buildPayloadsTabContainer {
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = 14;
+
+    [stack addArrangedSubview:[self buildPayloadSection]];
+    [stack addArrangedSubview:[self buildSelectedPayloadCard]];
+    [stack addArrangedSubview:[self buildFetchAddRow]];
+    [stack addArrangedSubview:[self buildInjectButton]];
+    [stack addArrangedSubview:[self buildAutoInjectRow]];
+    [stack addArrangedSubview:[self buildResultPanel]];
+
+    self.payloadsTabContainer = stack;
+    return stack;
+}
+
+- (UIView *)buildSourcesTabContainer {
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = 8;
+
+    UIStackView *headerRow = [[UIStackView alloc] init];
+    headerRow.axis = UILayoutConstraintAxisHorizontal;
+    headerRow.alignment = UIStackViewAlignmentCenter;
+
+    self.sourcesSectionLabel = [self sectionLabel:@"SOURCES"];
+    self.addSourceButton = [self pillButton:@"+ Add" style:PillButtonStyleOutlined];
+    [self.addSourceButton addTarget:self action:@selector(addSourceTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    [headerRow addArrangedSubview:self.sourcesSectionLabel];
+    [headerRow addArrangedSubview:[[UIView alloc] init]];
+    [headerRow addArrangedSubview:self.addSourceButton];
+
+    self.sourcesListStack = [[UIStackView alloc] init];
+    self.sourcesListStack.axis = UILayoutConstraintAxisVertical;
+    self.sourcesListStack.spacing = 4;
+
+    self.noSourcesLabel = [self label:@"No custom sources added yet." size:12 bold:NO];
+    self.noSourcesLabel.numberOfLines = 0;
+
+    [stack addArrangedSubview:headerRow];
+    [stack addArrangedSubview:self.sourcesListStack];
+    [stack addArrangedSubview:self.noSourcesLabel];
+
+    self.sourcesTabContainer = stack;
+    return stack;
 }
 
 - (void)buildHeaderRow {
@@ -712,6 +803,8 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
 
     if ([name isEqualToString:@"trash"]) {
         [self drawTrashIconInContext:ctx];
+    } else if ([name isEqualToString:@"pencil"]) {
+        [self drawPencilIconInContext:ctx];
     } else if ([name isEqualToString:@"moon"]) {
         [self drawMoonIconInContext:ctx];
     } else if ([name isEqualToString:@"sun"]) {
@@ -748,6 +841,23 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         [strike addLineToPoint:CGPointMake(x, 17)];
         [strike stroke];
     }
+}
+
++ (void)drawPencilIconInContext:(CGContextRef)ctx {
+    UIBezierPath *body = [UIBezierPath bezierPath];
+    [body moveToPoint:CGPointMake(4, 20)];
+    [body addLineToPoint:CGPointMake(5, 15.5)];
+    [body addLineToPoint:CGPointMake(15.5, 5)];
+    [body addLineToPoint:CGPointMake(19, 8.5)];
+    [body addLineToPoint:CGPointMake(8.5, 19)];
+    [body addLineToPoint:CGPointMake(4, 20)];
+    [body closePath];
+    [body stroke];
+
+    UIBezierPath *tipLine = [UIBezierPath bezierPath];
+    [tipLine moveToPoint:CGPointMake(13, 7)];
+    [tipLine addLineToPoint:CGPointMake(17, 11)];
+    [tipLine stroke];
 }
 
 + (void)drawMoonIconInContext:(CGContextRef)ctx {
@@ -887,6 +997,9 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
                onSurfaceVariant:[self colourOnSurfaceVariant]
                          accent:kColourPrimary];
     __weak typeof(self) weakSelf = self;
+    cell.onRename = ^{
+        [weakSelf presentRenamePayload:payload];
+    };
     cell.onDelete = ^{
         [weakSelf confirmDeletePayload:payload];
     };
@@ -933,6 +1046,41 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
                                         numberStyle:NSNumberFormatterDecimalStyle]];
 }
 
+- (void)presentRenamePayload:(RCMPayload *)payload {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Rename payload"
+        message:nil preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.text = payload.name;
+        textField.autocorrectionType = UITextAutocorrectionTypeNo;
+        textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    __weak UIAlertController *weakAlert = alert;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Rename" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        NSString *newName = [weakAlert.textFields.firstObject.text
+            stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (newName.length == 0) {
+            [weakSelf appendLog:@"[ERROR] Payload name cannot be empty."];
+            return;
+        }
+        NSError *err = nil;
+        RCMPayload *renamed = [[PayloadManager shared] renamePayload:payload newName:newName error:&err];
+        if (!renamed) {
+            [weakSelf appendLog:[NSString stringWithFormat:@"[ERROR] Could not rename payload: %@",
+                err.localizedDescription ?: @"unknown error"]];
+            return;
+        }
+        if (weakSelf.selectedPayload == payload) {
+            weakSelf.selectedPayload = renamed;
+            [weakSelf showSelectedPayload:renamed];
+        }
+        [weakSelf appendLog:[NSString stringWithFormat:@"Renamed payload to: %@", renamed.name]];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)confirmDeletePayload:(RCMPayload *)payload {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Delete payload"
         message:[NSString stringWithFormat:@"Remove \"%@\" from custom payloads?", payload.name]
@@ -948,6 +1096,145 @@ typedef NS_ENUM(NSInteger, PillButtonStyle) {
         [weakSelf updateInjectButton];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - Sources
+
+- (void)reloadCustomSources {
+    for (UIView *v in self.sourcesListStack.arrangedSubviews) {
+        [self.sourcesListStack removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
+
+    NSArray<RCMCustomSource *> *sources = [PayloadManager shared].customSources;
+    self.noSourcesLabel.hidden = sources.count > 0;
+
+    for (NSUInteger i = 0; i < sources.count; i++) {
+        [self.sourcesListStack addArrangedSubview:[self buildSourceRow:sources[i] index:i]];
+    }
+}
+
+- (UIView *)buildSourceRow:(RCMCustomSource *)source index:(NSUInteger)index {
+    UIStackView *row = [[UIStackView alloc] init];
+    row.axis = UILayoutConstraintAxisHorizontal;
+    row.alignment = UIStackViewAlignmentCenter;
+    row.spacing = 8;
+
+    UILabel *nameLabel = [self label:source.name size:14 bold:YES];
+    UILabel *repoLabel = [self label:source.repo size:12 bold:NO];
+    repoLabel.textColor = [self colourOnSurfaceVariant];
+
+    UIStackView *textStack = [[UIStackView alloc] init];
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 1;
+    [textStack addArrangedSubview:nameLabel];
+    [textStack addArrangedSubview:repoLabel];
+
+    UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [deleteButton.widthAnchor constraintEqualToConstant:32].active = YES;
+    [deleteButton.heightAnchor constraintEqualToConstant:32].active = YES;
+    [deleteButton setImage:[MainViewController rcmIconNamed:@"trash" pointSize:16] forState:UIControlStateNormal];
+    deleteButton.tintColor = kColourError;
+    deleteButton.tag = (NSInteger)index;
+    [deleteButton addTarget:self action:@selector(deleteSourceTapped:) forControlEvents:UIControlEventTouchUpInside];
+
+    [row addArrangedSubview:textStack];
+    [row addArrangedSubview:deleteButton];
+    return row;
+}
+
+- (void)deleteSourceTapped:(UIButton *)sender {
+    NSArray<RCMCustomSource *> *sources = [PayloadManager shared].customSources;
+    if ((NSUInteger)sender.tag >= sources.count) return;
+    RCMCustomSource *source = sources[sender.tag];
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Delete source"
+        message:[NSString stringWithFormat:@"Remove \"%@\" from custom sources?", source.name]
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Delete" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *a) {
+        [[PayloadManager shared] removeCustomSourceNamed:source.name];
+        if (weakSelf.selectedPayload && !weakSelf.selectedPayload.isCustom &&
+            [weakSelf.selectedPayload.name isEqualToString:source.name]) {
+            weakSelf.selectedPayload = nil;
+            weakSelf.selectedPayloadCard.hidden = YES;
+        }
+        [weakSelf reloadCustomSources];
+        [weakSelf updateInjectButton];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)addSourceTapped {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Add payload source"
+        message:@"Fetch a custom payload from a GitHub repository's latest release."
+        preferredStyle:UIAlertControllerStyleAlert];
+
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"Display name";
+        tf.autocorrectionType = UITextAutocorrectionTypeNo;
+    }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"owner/repo";
+        tf.autocorrectionType = UITextAutocorrectionTypeNo;
+        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.placeholder = @"Release asset filename, e.g. hekate_ctcaer_*_Nyx_*.zip";
+        tf.autocorrectionType = UITextAutocorrectionTypeNo;
+        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    }];
+
+    __weak typeof(self) weakSelf = self;
+    __weak UIAlertController *weakAlert = alert;
+
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Not a .zip" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [weakSelf finishAddSourceWithAlert:weakAlert isZip:NO zipPattern:nil];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"It's a .zip archive" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [weakSelf presentZipPatternPromptForAlert:weakAlert];
+    }]];
+
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)presentZipPatternPromptForAlert:(UIAlertController *)sourceAlert {
+    UIAlertController *zipAlert = [UIAlertController alertControllerWithTitle:@"Archive contents"
+        message:@"Which file inside the archive should be used? Supports * wildcards."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [zipAlert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+        tf.text = @"*.bin";
+        tf.autocorrectionType = UITextAutocorrectionTypeNo;
+        tf.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    }];
+    [zipAlert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    __weak UIAlertController *weakZipAlert = zipAlert;
+    [zipAlert addAction:[UIAlertAction actionWithTitle:@"Add source" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        NSString *pattern = weakZipAlert.textFields.firstObject.text;
+        [weakSelf finishAddSourceWithAlert:sourceAlert isZip:YES zipPattern:pattern];
+    }]];
+    [self presentViewController:zipAlert animated:YES completion:nil];
+}
+
+- (void)finishAddSourceWithAlert:(UIAlertController *)sourceAlert isZip:(BOOL)isZip zipPattern:(nullable NSString *)zipPattern {
+    NSArray<UITextField *> *fields = sourceAlert.textFields;
+    RCMCustomSource *source = [RCMCustomSource new];
+    source.name = fields[0].text ?: @"";
+    source.repo = fields[1].text ?: @"";
+    source.assetMatch = fields[2].text ?: @"";
+    source.isZip = isZip;
+    source.zipInnerPattern = zipPattern.length > 0 ? zipPattern : @"*.bin";
+
+    NSString *error = [[PayloadManager shared] addCustomSource:source];
+    if (error) {
+        [self appendLog:[NSString stringWithFormat:@"[ERROR] Could not add source: %@", error]];
+        return;
+    }
+    [self reloadCustomSources];
+    [self appendLog:[NSString stringWithFormat:@"Added source: %@", source.name]];
 }
 
 #pragma mark - Log
