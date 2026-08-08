@@ -16,15 +16,15 @@ public static class UpdateChecker
 
     public static string DetectRid()
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return "osx";
+
         string? builtRid = AppContext.GetData("RUNTIME_IDENTIFIER") as string;
         if (!string.IsNullOrEmpty(builtRid))
             return builtRid;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return "win-x64";
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return "osx";
 
         return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
             ? "linux-arm64"
