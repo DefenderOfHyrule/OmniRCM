@@ -1,14 +1,14 @@
 Package: io.github.omnircm.ios
-Version: 1.1.0
+Version: 1.1.1
 Architecture: iphoneos-arm64
 Maintainer: DefenderOfHyrule <https://github.com/DefenderOfHyrule>
 Installed-Size: 2164
 Depends: firmware (>= 9.0)
 Filename: debs/OmniRCM-iOS-rootless.deb
-Size: 1785072
-MD5sum: 66d9ae1347428fe43b5ffa4196380ffd
-SHA1: 09c05cd7c0e9856e3072198313fc3903cf489d8c
-SHA256: 9a5b2ae43288ea1264b3611fbcf913da6bfdfb5a862937342c74784595bf038f
+Size: 1785440
+MD5sum: 2b2110e9d41611e56a2b1145b44b81f7
+SHA1: 7f91df20a5d996f71b0c94a5adea3e5e5ba19c64
+SHA256: f291cf620ab780c36bb6e04b3a847ecb272404e3810516f2664b230b7c03c443
 Section: Utilities
 Description: Nintendo Switch RCM payload injector with full diagnostics.
  Supports unpatched V1, patched V1, and V2/Mariko detection.
@@ -19,16 +19,16 @@ Icon: https://omnircm.nintendohomebrew.com/repo/icon.png
 Name: OmniRCM
 
 Package: io.github.omnircm.ios
-Version: 1.1.0
+Version: 1.1.1
 Architecture: iphoneos-arm
 Maintainer: DefenderOfHyrule <https://github.com/DefenderOfHyrule>
 Installed-Size: 2164
 Depends: firmware (>= 9.0)
 Filename: debs/OmniRCM-iOS-rootful.deb
-Size: 1784856
-MD5sum: bb3a158997e6cec144d05952ab4fab30
-SHA1: 461cb8acaee33ee21d80067d641205cbfa91c708
-SHA256: 621513ca76c195be8ef43410646698389af666a90ab2160369e4788e8bc27c88
+Size: 1784922
+MD5sum: a895b06b33e24506866fb64a2a12c820
+SHA1: 9dd4ecf1d8bf574375276ddffb2889dff4c272ba
+SHA256: 22620893e4b30ccda22d2f403df2245d37f79caf24bc3ca73a4e8675c4351824
 Section: Utilities
 Description: Nintendo Switch RCM payload injector with full diagnostics.
  Supports unpatched V1, patched V1, and V2/Mariko detection.
