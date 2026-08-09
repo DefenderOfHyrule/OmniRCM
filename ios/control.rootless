@@ -1,6 +1,6 @@
 Package: io.github.omnircm.ios
 Name: OmniRCM
-Version: 1.1.0
+Version: 1.1.1
 Icon: https://omnircm.nintendohomebrew.com/repo/icon.png
 Architecture: iphoneos-arm64
 Description: Nintendo Switch RCM payload injector with full diagnostics.

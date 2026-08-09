@@ -87,13 +87,19 @@ public static class UpdateChecker
         catch                              { return null; }
     }
 
-    public static async Task DownloadAndInstallAsync(
+    public static async Task<string> DownloadAndInstallAsync(
         UpdateInfo        info,
         Action<int>       progressCallback,
         CancellationToken ct = default)
     {
         string exePath = Environment.ProcessPath
             ?? throw new InvalidOperationException("Cannot determine the running executable path.");
+
+#if MACOS
+        string? realExePath = MacTranslocation.ResolveOriginalPath(exePath);
+        if (realExePath is not null)
+            exePath = realExePath;
+#endif
 
         string dir = exePath.Contains(".app/Contents/MacOS")
             ? Path.GetFullPath(Path.Combine(Path.GetDirectoryName(exePath)!, "..", "..", ".."))
@@ -147,7 +153,7 @@ public static class UpdateChecker
             File.Move(exePath, backupPath);
             File.Move(tmpFile, exePath);
             try { File.Delete(backupPath); } catch { }
-            return;
+            return exePath;
         }
 
         string extractDir = Path.Combine(tmpBase, "__omnircm_update_extract__");
@@ -183,6 +189,18 @@ public static class UpdateChecker
 
             if (appBundle is not null)
             {
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    string innerExe = Path.Combine(appBundle, "Contents", "MacOS", "OmniRCM");
+                    if (File.Exists(innerExe))
+                    {
+                        using var chmod = System.Diagnostics.Process.Start(
+                            new System.Diagnostics.ProcessStartInfo("chmod", $"+x \"{innerExe}\"")
+                            { UseShellExecute = false })!;
+                        await chmod.WaitForExitAsync(ct);
+                    }
+                }
+
                 string appTarget = exePath.Contains(".app/Contents/MacOS")
                     ? Path.GetFullPath(Path.Combine(exePath, "..", "..", ".."))
                     : Path.Combine(dir, Path.GetFileName(appBundle));
@@ -193,7 +211,7 @@ public static class UpdateChecker
                 Directory.Move(appBundle, appTarget);
                 try { Directory.Delete(backupApp, true); } catch { }
                 try { Directory.Delete(tmpBase,   true); } catch { }
-                return;
+                return exePath;
             }
 
             string? newBinary = candidates.FirstOrDefault(f =>
@@ -221,6 +239,7 @@ public static class UpdateChecker
             File.Move(exePath, backupPath);
             File.Copy(newBinary, exePath, overwrite: false);
             try { File.Delete(backupPath); } catch { }
+            return exePath;
         }
         finally
         {

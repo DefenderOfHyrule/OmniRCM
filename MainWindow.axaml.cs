@@ -16,7 +16,7 @@ namespace OmniRCM;
 
 public partial class MainWindow : Window
 {
-    private static readonly OmniVersion CurrentVersion = new(1, 1, 0);
+    private static readonly OmniVersion CurrentVersion = new(1, 1, 1);
 
     private Settings _settings = Settings.Load();
 
@@ -987,7 +987,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await UpdateChecker.DownloadAndInstallAsync(
+            string newExePath = await UpdateChecker.DownloadAndInstallAsync(
                 _pendingUpdate,
                 pct => Dispatcher.UIThread.Post(() =>
                     UpdateOverlayMessage.Text = $"{pct}%  -  {_pendingUpdate.AssetName}"));
@@ -995,23 +995,51 @@ public partial class MainWindow : Window
             HideUpdateOverlay();
             AppendLog($"Updated to v{_pendingUpdate.LatestVersion}. Restarting...");
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 try
                 {
-                    string? exe = Environment.ProcessPath;
-                    if (!string.IsNullOrEmpty(exe))
+                    if (!string.IsNullOrEmpty(newExePath))
                     {
                         Program.ReleaseSingleInstanceLock();
-                        System.Diagnostics.Process.Start(
-                            new System.Diagnostics.ProcessStartInfo(exe)
+
+                        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                        {
+                            string bundlePath = newExePath.Contains(".app/Contents/MacOS")
+                                ? Path.GetFullPath(Path.Combine(newExePath, "..", "..", ".."))
+                                : newExePath;
+
+                            var psi = new System.Diagnostics.ProcessStartInfo("open", $"-n \"{bundlePath}\"")
                             {
-                                UseShellExecute = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                                               || RuntimeInformation.IsOSPlatform(OSPlatform.OSX),
-                            });
+                                UseShellExecute       = false,
+                                RedirectStandardError = true,
+                            };
+
+                            using var openProc = System.Diagnostics.Process.Start(psi);
+                            if (openProc is not null)
+                            {
+                                string stderr = await openProc.StandardError.ReadToEndAsync();
+                                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                                try { await openProc.WaitForExitAsync(cts.Token); } catch (OperationCanceledException) { }
+
+                                if (openProc.ExitCode != 0 || !string.IsNullOrWhiteSpace(stderr))
+                                    AppendLog($"[WARN] 'open' exited {openProc.ExitCode}: {stderr.Trim()}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Process.Start(
+                                new System.Diagnostics.ProcessStartInfo(newExePath)
+                                {
+                                    UseShellExecute = RuntimeInformation.IsOSPlatform(OSPlatform.Windows),
+                                });
+                        }
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AppendLog($"[WARN] Could not relaunch automatically: {ex.Message}");
+                }
                 _pollTimer.Stop();
                 _spinTimer.Stop();
                 _updateSpinTimer?.Stop();
