@@ -1,0 +1,103 @@
+name: Update Web Payloads
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-payloads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Fetch fusee.bin (Atmosphere-NX/Atmosphere)
+        id: fusee
+        run: |
+          RELEASE=$(curl -sf https://api.github.com/repos/Atmosphere-NX/Atmosphere/releases/latest)
+          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+          URL="https://github.com/Atmosphere-NX/Atmosphere/releases/download/${TAG}/fusee.bin"
+
+          CURRENT=""
+          [ -f web/payloads/fusee.version ] && CURRENT=$(cat web/payloads/fusee.version)
+
+          if [ "$TAG" = "$CURRENT" ]; then
+            echo "fusee.bin already up to date ($TAG)"
+          else
+            echo "Downloading fusee.bin $TAG..."
+            mkdir -p web/payloads
+            curl -sLf "$URL" -o web/payloads/fusee.bin
+            echo "$TAG" > web/payloads/fusee.version
+            echo "updated=true" >> $GITHUB_OUTPUT
+            echo "fusee.bin $TAG downloaded."
+          fi
+
+      - name: Fetch hekate_ctcaer_*.bin (CTCaer/hekate)
+        id: hekate
+        run: |
+          RELEASE=$(curl -sf https://api.github.com/repos/CTCaer/hekate/releases/latest)
+          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+          ZIP_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | startswith("hekate_ctcaer") and endswith(".zip")) | .browser_download_url' | head -n1)
+          ZIP_NAME=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | startswith("hekate_ctcaer") and endswith(".zip")) | .name' | head -n1)
+
+          CURRENT=""
+          [ -f web/payloads/hekate.version ] && CURRENT=$(cat web/payloads/hekate.version)
+
+          if [ "$TAG" = "$CURRENT" ]; then
+            echo "hekate already up to date ($TAG)"
+          else
+            echo "Downloading $ZIP_NAME $TAG..."
+            mkdir -p web/payloads
+            curl -sLf "$ZIP_URL" -o /tmp/hekate.zip
+            BIN_NAME=$(unzip -l /tmp/hekate.zip | grep -oP 'hekate_ctcaer_[^ ]+\.bin' | head -n1)
+            unzip -pj /tmp/hekate.zip "$BIN_NAME" > web/payloads/hekate.bin
+            echo "$BIN_NAME" > web/payloads/hekate.filename
+            echo "$TAG" > web/payloads/hekate.version
+            rm /tmp/hekate.zip
+            echo "updated=true" >> $GITHUB_OUTPUT
+            echo "hekate $TAG downloaded ($BIN_NAME)."
+          fi
+
+      - name: Fetch TegraExplorer.bin (suchmememanyskill/TegraExplorer)
+        id: tegra
+        run: |
+          RELEASE=$(curl -sf https://api.github.com/repos/suchmememanyskill/TegraExplorer/releases/latest)
+          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+          URL="https://github.com/suchmememanyskill/TegraExplorer/releases/download/${TAG}/TegraExplorer.bin"
+
+          CURRENT=""
+          [ -f web/payloads/TegraExplorer.version ] && CURRENT=$(cat web/payloads/TegraExplorer.version)
+
+          if [ "$TAG" = "$CURRENT" ]; then
+            echo "TegraExplorer.bin already up to date ($TAG)"
+          else
+            echo "Downloading TegraExplorer.bin $TAG..."
+            mkdir -p web/payloads
+            curl -sLf "$URL" -o web/payloads/TegraExplorer.bin
+            echo "$TAG" > web/payloads/TegraExplorer.version
+            echo "updated=true" >> $GITHUB_OUTPUT
+            echo "TegraExplorer.bin $TAG downloaded."
+          fi
+
+      - name: Commit updated payloads
+        if: steps.fusee.outputs.updated == 'true' || steps.hekate.outputs.updated == 'true' || steps.tegra.outputs.updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add web/payloads/
+
+          MSG="[skip ci] Update web payloads"
+          DETAILS=""
+          [ "${{ steps.fusee.outputs.updated }}" = "true" ] && DETAILS="$DETAILS fusee=$(cat web/payloads/fusee.version)"
+          [ "${{ steps.hekate.outputs.updated }}" = "true" ] && DETAILS="$DETAILS hekate=$(cat web/payloads/hekate.version)"
+          [ "${{ steps.tegra.outputs.updated }}" = "true" ] && DETAILS="$DETAILS TegraExplorer=$(cat web/payloads/TegraExplorer.version)"
+          [ -n "$DETAILS" ] && MSG="$MSG -$DETAILS"
+
+          git commit -m "$MSG"
+          git push origin main
