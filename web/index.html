@@ -1102,9 +1102,6 @@
       setLoading(spec.id, false);
     }
 
-    if (!state.selectedPayloadId && state.payloads.length > 0) {
-      selectPayload(state.payloads[0].id);
-    }
   })();
 
   BUILTIN.forEach((spec) => {
