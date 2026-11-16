@@ -26,7 +26,7 @@ public static class RcmInjector
         public string Summary() => Status switch
         {
             Result.Success            => $"Injection successful, device ID: {DeviceId}",
-            Result.DeviceNotFound     => Error ?? "No Tegra RCM device found. Put the Switch in RCM.",
+            Result.DeviceNotFound     => Error ?? DeviceNotFoundMessage(),
             Result.ReadIdFailed       => "Failed to read device ID. Try a different USB cable/port.",
             Result.PayloadBuildFailed => Error ?? "Failed to build RCM payload.",
             Result.PayloadSendFailed  => Error ?? "Payload transfer failed. Try a different USB cable or port.",
@@ -40,6 +40,13 @@ public static class RcmInjector
     }
 
     private const int SmashTimeoutSeconds = 10;
+
+    private static bool _seenV1TimeoutAtF000;
+
+    public static void ResetState()
+    {
+        _seenV1TimeoutAtF000 = false;
+    }
 
     public static Task<InjectionResult> InjectAsync(
         string payloadPath, Action<string> log, CancellationToken ct = default)
@@ -104,12 +111,27 @@ public static class RcmInjector
         {
             ct.ThrowIfCancellationRequested();
             byte[] block = buf[(i * 0x1000)..((i + 1) * 0x1000)];
+            int offset = i * 0x1000;
 
             int writeResult = dev.WriteSingleBlockResult(block, log);
             if (writeResult < 0)
             {
-                if (i * 0x1000 == MarikoStopOffset)
+                bool isTimeout = writeResult == -2;
+                bool isV1Signal = writeResult == -1;
+
+                if (isV1Signal)
+                    return new InjectionResult { Status = Result.PatchedV1, DeviceId = idHex };
+
+                if (isTimeout && offset == 0xF000)
                 {
+                    _seenV1TimeoutAtF000 = true;
+                    return new InjectionResult { Status = Result.PatchedV1, DeviceId = idHex };
+                }
+
+                if (isTimeout && offset == MarikoStopOffset)
+                {
+                    if (_seenV1TimeoutAtF000)
+                        return new InjectionResult { Status = Result.PatchedV1, DeviceId = idHex };
                     if (idHex.EndsWith("01101062"))
                         return new InjectionResult { Status = Result.PatchedV1, DeviceId = idHex };
                     return new InjectionResult { Status = Result.PatchedV2, DeviceId = idHex };
@@ -121,6 +143,9 @@ public static class RcmInjector
                       "This usually means a bad USB cable, port, or hub. Try: a direct port on the PC, a shorter cable, or a different USB-A/C cable.";
                 return Fail(Result.PayloadSendFailed, msg);
             }
+
+            if (offset == 0xF000)
+                _seenV1TimeoutAtF000 = false;
         }
         log("Payload sent.");
 
@@ -151,10 +176,31 @@ public static class RcmInjector
         return smash switch
         {
             SmashResult.Success   => new InjectionResult { Status = Result.Success, DeviceId = idHex },
-            SmashResult.PatchedV1 => new InjectionResult { Status = Result.PatchedV1 },
-            SmashResult.TimedOut  => new InjectionResult { Status = Result.PatchedV2 },
+            SmashResult.PatchedV1 => new InjectionResult { Status = Result.PatchedV1, DeviceId = idHex },
+            SmashResult.TimedOut  => new InjectionResult
+            {
+                Status   = (_seenV1TimeoutAtF000 || idHex.EndsWith("01101062"))
+                    ? Result.PatchedV1
+                    : Result.PatchedV2,
+                DeviceId = idHex,
+            },
             _                     => Fail(Result.SmashError, null),
         };
+    }
+
+    private static string DeviceNotFoundMessage()
+    {
+        string msg = "No Tegra RCM device found.\n" +
+            "• If you just injected a payload, the console may be in a stale state. Unplug it, hold power for 13 seconds and re-enter RCM.\n" +
+            "• Try a different USB cable or port to rule out USB stack errors.";
+
+        if (OperatingSystem.IsWindows())
+            msg += "\n• Make sure the APX device has the libusbK driver installed (use the Install Driver button or Zadig).";
+        else if (OperatingSystem.IsLinux())
+            msg += "\n• Make sure the udev rule is installed and active (run Setup udev)." +
+                   "\n• A full reboot may be required (logging out is not always enough on some distros).";
+
+        return msg;
     }
 
     private static InjectionResult Fail(Result s, string? msg) =>

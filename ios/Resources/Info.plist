@@ -9,9 +9,9 @@
     <key>CFBundleIdentifier</key>
     <string>io.github.omnircm.ios</string>
     <key>CFBundleVersion</key>
-    <string>4</string>
+    <string>5</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.1</string>
+    <string>1.1.2</string>
     <key>CFBundleExecutable</key>
     <string>OmniRCM</string>
     <key>CFBundlePackageType</key>

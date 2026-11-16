@@ -16,7 +16,7 @@ namespace OmniRCM;
 
 public partial class MainWindow : Window
 {
-    private static readonly OmniVersion CurrentVersion = new(1, 1, 1);
+    private static readonly OmniVersion CurrentVersion = new(1, 1, 2);
 
     private Settings _settings = Settings.Load();
 
@@ -279,6 +279,7 @@ public partial class MainWindow : Window
         ZadigHintBorder.IsVisible = false;
         ClearResultPanel();
 
+        RcmInjector.ResetState();
         AppendLog("Device disconnected.");
         ReevaluateInjectButton();
     }
@@ -725,7 +726,10 @@ public partial class MainWindow : Window
                         DeviceStateLabel.Text = "✗ Patched V1 console";
                         SetPill("#FFC107", "Patched V1 console");
                         SetResultPanel("#FFC107",
-                            "This console has an updated bootROM and cannot be exploited via RCM.");
+                            "This console has an updated bootROM and cannot be exploited via RCM.\n\n" +
+                            "Note: If you get this result with a known unpatched console, please retry " +
+                            "payload injection. Check the log to see if the transfer timed out at " +
+                            "61440 or 65536; if it did, try a different (shorter) USB cable.");
                         break;
 
                     case "PatchedV2":
